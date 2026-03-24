@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
-export type UserRole = 'ALUMNO' | 'EMPRESA' | 'TUTOR_CENTRO' | 'TUTOR_EMPRESA' | null;
+export type UserRole = 'ALUMNO' | 'EMPRESA' | 'TUTOR_CENTRO' | 'TUTOR_EMPRESA' | 'SUPERADMIN' | null;
 
 interface User {
     id: number;
     email: string;
     nombre: string;
     role: UserRole;
+    isAprobado?: boolean;
     centro?: string;
     grado?: string;
     empresa?: string;

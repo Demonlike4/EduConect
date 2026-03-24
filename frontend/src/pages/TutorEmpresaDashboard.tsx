@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import ChatSystem from '../components/ChatSystem';
+import NotificationPanel from '../components/NotificationPanel';
 import axios from 'axios';
 import SignaturePad from '../components/SignaturePad';
 
@@ -187,12 +188,12 @@ const TutorEmpresaDashboard: React.FC = () => {
             {/* Sidebar Navigation */}
             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 relative z-20">
                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined font-black">supervisor_account</span>
+                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
+                        <span className="material-symbols-outlined font-black">account_balance</span>
                     </div>
                     <div>
-                        <h1 className="text-sm font-black dark:text-white">EduConect</h1>
-                        <p className="text-[10px] text-primary font-black uppercase tracking-wider">Tutor Empresa</p>
+                        <h1 className="text-sm font-black text-primary">SÉNECA</h1>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tutor Empresa</p>
                     </div>
                 </div>
 
@@ -241,14 +242,14 @@ const TutorEmpresaDashboard: React.FC = () => {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-[#0B111A]">
-                <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-5 sticky top-0 z-10 flex items-center justify-between transition-colors duration-300">
+                <header className="bg-primary border-b border-primary-dark text-white px-8 py-5 sticky top-0 z-10 flex items-center justify-between shadow-md">
                     <div>
-                        <h2 className="text-xl font-black dark:text-white">
+                        <h2 className="text-xl font-black text-white">
                             {activeTab === 'resumen' && 'Panel de Tutoría'}
                             {activeTab === 'alumnos' && 'Gestión de Alumnos'}
                             {activeTab === 'mensajes' && 'Centro de Mensajería'}
                         </h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                        <p className="text-sm text-white/80 font-medium tracking-tight">
                             {activeTab === 'resumen' && 'Vista general del seguimiento de alumnos'}
                             {activeTab === 'alumnos' && 'Tus alumnos asignados en la empresa'}
                             {activeTab === 'mensajes' && 'Canales de comunicación directos'}
@@ -258,8 +259,9 @@ const TutorEmpresaDashboard: React.FC = () => {
 
                 <div className="p-8 h-full overflow-y-auto custom-scrollbar">
                     {activeTab === 'resumen' && (
-                        <div className="space-y-8 animate-in fade-in duration-500">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in duration-500">
+                            <div className="flex-1 space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                                     <div className="flex justify-between items-start mb-4">
                                         <span className="material-symbols-outlined text-primary bg-primary/10 p-3 rounded-2xl">person_check</span>
@@ -314,6 +316,10 @@ const TutorEmpresaDashboard: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
+                            </div>
+                            </div>
+                            <div className="w-full lg:w-96 shrink-0">
+                                <NotificationPanel role="TUTOR_EMPRESA" />
                             </div>
                         </div>
                     )}

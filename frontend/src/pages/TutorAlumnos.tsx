@@ -55,12 +55,12 @@ const TutorAlumnos: React.FC = () => {
             {/* Sidebar */}
             <aside className="w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
                 <div className="p-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 cursor-pointer" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined text-2xl">school</span>
+                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
+                        <span className="material-symbols-outlined text-2xl">account_balance</span>
                     </div>
                     <div>
-                        <h1 className="text-sm font-bold leading-tight dark:text-white">EduPrácticas</h1>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Connect Panel</p>
+                        <h1 className="text-sm font-black text-primary">SÉNECA</h1>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Junta de Andalucía</p>
                     </div>
                 </div>
 
@@ -105,20 +105,20 @@ const TutorAlumnos: React.FC = () => {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-[#0B111A]">
                 {/* Header */}
-                <header className="h-16 bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 transition-colors duration-300">
-                    <h2 className="text-lg font-bold dark:text-white">Alumnos - {user?.centro || 'Centro Educativo'}</h2>
+                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md z-10 transition-colors duration-300">
+                    <h2 className="text-lg font-black text-white">Alumnos - {user?.centro || 'Centro Educativo'}</h2>
                     <div className="flex items-center gap-4">
                         <div className="relative group">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/70">search</span>
                             <input
-                                className="pl-10 pr-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0B111A] text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent w-64 outline-none transition-all placeholder:text-slate-400"
+                                className="pl-10 pr-4 py-1.5 rounded-sm border border-transparent bg-white/10 text-sm text-white focus:ring-2 focus:ring-white focus:border-transparent w-full md:w-64 outline-none transition-all placeholder:text-white/70"
                                 placeholder="Buscar alumnos..."
                                 type="text"
                             />
                         </div>
-                        <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors">
+                        <button className="p-2 text-white/90 hover:bg-white/10 rounded-sm relative transition-colors">
                             <span className="material-symbols-outlined">notifications</span>
-                            <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+                            <span className="absolute top-2 right-2 size-2 bg-amber-500 rounded-full border-2 border-primary"></span>
                         </button>
                     </div>
                 </header>

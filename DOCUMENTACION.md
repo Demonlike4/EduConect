@@ -1,88 +1,95 @@
 # EduConect - Documentación Técnica del Proyecto Final (DAW)
 
 ## 1. Introducción y Objetivos
-
-**EduConect** es una plataforma web integral diseñada para la gestión y digitalización del proceso de Formación en Centros de Trabajo (FCT). El objetivo principal del proyecto es simplificar la burocracia y mejorar la comunicación entre los tres pilares fundamentales de las prácticas: el **Alumno**, el **Tutor Académico** (Centro Educativo) y el **Tutor de Empresa**.
+**EduConect** es una plataforma web integral diseñada para la gestión y digitalización del proceso de Formación en Centros de Trabajo (FCT). El objetivo principal del proyecto es simplificar la burocracia y mejorar la comunicación entre los cuatro pilares fundamentales: el **Alumno**, el **Tutor Académico** (Centro Educativo), el **Tutor de Empresa** y el **Super Administrador**.
 
 ### Objetivos Principales:
-*   **Digitalización del Diario de Prácticas**: Eliminar el uso de papel para el seguimiento diario de actividades.
-*   **Gestión de Candidaturas**: Centralizar las ofertas de prácticas y las solicitudes de los alumnos.
-*   **Firma Digital de Convenios**: Agilizar la firma de acuerdos entre el centro y la empresa.
-*   **Transparencia en el Progreso**: Permitir un seguimiento en tiempo real de las horas realizadas y validadas.
+*   **Digitalización del Diario de Prácticas**: Eliminación total del papel para el seguimiento de actividades.
+*   **Gestión de Candidaturas**: Centralización de ofertas y solicitudes en tiempo real.
+*   **Firma Digital de Convenios**: Implementación de un panel de firma táctil/ratón para formalizar acuerdos de forma legal y ágil.
+*   **Notificaciones Inteligentes**: Sistema de avisos automáticos según el rol y el estado de la FCT.
+*   **Transparencia en el Progreso**: Seguimiento visual del cómputo total de horas (370h) y su validación periódica.
 
 ---
 
 ## 2. Tecnologías Utilizadas (Tech Stack)
-
 ### Backend:
 *   **Lenguaje**: PHP 8.2+
 *   **Framework**: Symfony 7.0
-*   **Base de Datos**: MySQL (manejada con Doctrine ORM)
-*   **Gestión de Dependencias**: Composer
-*   **Seguridad**: Autenticación basada en JWT (JSON Web Tokens).
+*   **Base de Datos**: MySQL (gestionada a través de Doctrine ORM)
+*   **Seguridad**: Autenticación basada en JWT (JSON Web Tokens) y sistema robusto de recuperación de contraseñas.
+*   **Comandos**: CLI personalizados para depuración de tutores y mantenimiento del sistema.
 
 ### Frontend:
-*   **Lenguaje**: TypeScript
-*   **Framework**: React 18+
-*   **Gestión de Estado y Rutas**: React Router 6
-*   **Estilizado**: Tailwind CSS (Utilizando un diseño premium con modo oscuro y animaciones).
-*   **Comunicación API**: Axios
-*   **Iconografía**: Google Material Symbols.
+*   **Framework**: React 18+ con TypeScript.
+*   **Estilizado**: Tailwind CSS v3 (Diseño premium con arquitectura de diseño atómico).
+*   **Gestión de Estado**: Context API para temas (DarkMode) y sesión de usuario.
+*   **Navegación**: React Router Dom 6.
+*   **UX/UI**: Animaciones fluidas, Skeleton Loaders y Material Symbols para iconografía.
 
 ---
 
 ## 3. Funcionalidades por Rol
 
 ### 🎓 Alumno (Estudiante)
-1.  **Registro y Perfil**: Carga de CV en PDF y definición de habilidades tecnológicas.
-2.  **Panel de Ofertas**: Visualización de vacantes de FCT publicadas por empresas y aplicación directa.
-3.  **Seguimiento de Estado**: Notificación visual sobre el estado de su candidatura (Postulado, Admitido, Validado).
-4.  **Diario de Prácticas Digital**: 
-    *   Registro diario de actividades realizadas y horas dedicadas.
-    *   Visualización de estadísticas de progreso (horas totales vs. objetivo de 370h).
-    *   Recepción de feedback y correcciones de los tutores.
-5.  **Descarga de Documentación**: Acceso inmediato al convenio firmado una vez validado.
+1.  **Perfil Digital**: Carga de CV en PDF, definición de habilidades técnicas y foto de perfil.
+2.  **Marketplace de Prácticas**: Visualización de vacantes publicadas por empresas con aplicación directa en un clic.
+3.  **Diario de Actividades**: Registro diario de jornada (fecha, descripción y horas) con estadísticas de progreso en tiempo real.
+4.  **Descarga de Documentación**: Acceso inmediato a convenios firmados una vez validados por las partes.
 
 ### 🏛️ Tutor Académico (Centro Educativo)
-1.  **Gestión de Alumnos**: Aprobación de nuevos registros de estudiantes del centro.
-2.  **Validación de Prácticas**: 
-    *   Revisión de ofertas de empresas.
-    *   Asignación formal de alumnos a empresas mediante firma digital del convenio.
-3.  **Supervisión de Bitácoras**:
-    *   Revisión diaria o semanal de las actividades registradas por los alumnos.
-    *   Capacidad para aprobar o rechazar entradas del diario con observaciones técnicas.
-4.  **Gestión de Convenios**: Generación y descarga de la documentación legal del acuerdo de FCT.
+1.  **Gestión de Alumnado**: Activación manual de nuevos registros y supervisión de expedientes externos.
+2.  **Generación de Convenios**: Creación de acuerdos legales y firma digital mediante el componente `SignaturePad`.
+3.  **Supervisión de Bitácoras**: Panel para revisar, corregir o aprobar las entradas diarias de sus alumnos asignados.
+4.  **Panel de Control del Centro**: Gestión de las relaciones con empresas colaboradoras y tutores externos.
 
-### 🏢 Tutor de Empresa (Colaborador)
-1.  **Firma del Convenio**: Proceso simplificado para plasmar la firma digital de la empresa en el acuerdo de colaboración.
-2.  **Gestión de Estudiantes Asignados**: Vista de los alumnos que actualmente realizan prácticas en su entidad.
-3.  **Visto Bueno (Diario)**: Revisión de las tareas realizadas por el alumno en la empresa para asegurar que coinciden con la realidad laboral.
-4.  **Perfil de la Empresa**: Gestión de la información de contacto y descripción de la entidad.
+### 🏢 Empresa / Tutor de Empresa
+1.  **Publicación de Vacantes**: Formulario avanzado para detallar puestos de FCT (tecnologías requeridas, horarios, tareas).
+2.  **Selección de Talento**: Gestión de candidatos postulados con acceso a sus CVs y perfiles.
+3.  **Firma de la Empresa**: Proceso de firma digital simplificado para el tutor laboral asignado.
+4.  **Validación de Jornadas**: Visto bueno a las horas registradas por el alumno para certificar la estancia.
 
----
-
-## 4. Ciclo de Vida del Estudiante en la Plataforma
-
-1.  **Registro**: El alumno se registra y el **Tutor Académico** debe activarlo.
-2.  **Postulación**: El alumno aplica a una oferta de una empresa.
-3.  **Selección**: La empresa acepta al candidato.
-4.  **Formalización**: El **Tutor Académico** genera el convenio y tanto él como el **Tutor de Empresa** lo firman digitalmente.
-5.  **Ejecución**: Se activan las prácticas. El alumno empieza a registrar su **Diario de Prácticas**.
-6.  **Validación**: Los tutores revisan y validan las horas de forma periódica hasta completar el ciclo de formación.
+### 🛡️ Super Administrador (Sistema)
+1.  **Administración de Instituciones**: Validación y alta de nuevos Centros Educativos autorizados.
+2.  **Gestión de Grados**: Definición de las titulaciones disponibles (DAM, DAW, ASIR, etc.) en el sistema.
+3.  **Mantenimiento Global**: Acceso a comandos de depuración y gestión de todos los perfiles de usuario.
 
 ---
 
-## 5. Arquitectura de Datos (Entidades Clave)
+## 4. Sistemas Transversales (Core Features)
 
-*   **User**: Gestiona el acceso, roles (ROLE_ALUMNO, ROLE_TUTOR_CENTRO, ROLE_TUTOR_EMPRESA) y credenciales.
-*   **Alumno**: Almacena datos académicos, habilidades y relación con el centro.
-*   **Oferta**: Datos del puesto (tecnologías, ubicación, horario) publicado por empresas.
-*   **Candidatura**: Vincula Alumno + Oferta y gestiona las firmas y fechas de las prácticas.
-*   **DiarioActividad**: Registros diarios de trabajo (fecha, horas, descripción, estado).
+### 🔔 Notificaciones en Tiempo Real
+*   Panel centralizado (`NotificationPanel`) que muestra avisos críticos:
+    *   **Alumnos**: Candidaturas aceptadas, diarios rechazados con feedback.
+    *   **Tutores**: Notificaciones de firmas pendientes o nuevos registros de alumnos.
+    *   **Empresas**: Alertas de nuevos perfiles postulados.
+
+### ✍️ Firma Digital Integrada
+*   Componente `SignaturePad` que permite capturar la firma manuscrita desde dispositivos táctiles o ratón.
+*   Persistencia de firmas en el flujo de la candidatura para la formalización automática del PDF oficial.
+
+### 🔐 Seguridad y Recuperación
+*   **Auth Flow**: Login basado en roles con redirección automática al dashboard correspondiente.
+*   **Password Reset**: Flujo de "Olvide mi contraseña" con generación de tokens, expiración y restablecimiento seguro.
+*   **Control de Acceso**: Middleware de Symfony configurado para proteger endpoints por jerarquía de roles.
+
+### 🌗 Interfaz de Usuario (UX/UI)
+*   **Modo Oscuro Adaptativo**: Soporte completo para temas claro/oscuro con almacenamiento en LocalStorage.
+*   **Feedback Inmediato**: Alertas de sistema, Skeleton screens para estados de carga y transiciones de página suaves.
 
 ---
 
-## 6. Seguridad y Buenas Prácticas
-*   **Validación de Datos**: Implementada en backend con Symfony Validator y en frontend mediante estados controlados.
-*   **CORS**: Configurado para permitir solo comunicaciones desde el dominio del frontend.
-*   **UX/UI**: Diseño responsive, soporte para modo oscuro nativo y feedback inmediato al usuario mediante alertas y skeletons de carga.
+## 5. Ciclo de Vida de la FCT en la Plataforma
+1.  **Registro**: El alumno se une y el Tutor Académico verifica su perfil.
+2.  **Postulación**: El alumno aplica; la empresa revisa el perfil y lo acepta como candidato.
+3.  **Formalización**: El Tutor Académico genera el convenio digital y se firman por todas las partes.
+4.  **Ejecución**: El alumno empieza a registrar horas diariamente en su portal.
+5.  **Cierre**: Los tutores validan el total de horas (370h) y se da por finalizado el ciclo formativo.
+
+---
+
+## 6. Arquitectura de Datos (Entidades Clave)
+*   **User**: Base central del sistema (email, roles, estado de aprobación).
+*   **Candidatura**: El nexo que vincula Alumno, Oferta, Convenio y Fechas de prácticas.
+*   **DiarioActividad**: Colección cronológica de todas las tareas y horas de formación realizadas.
+*   **Centro / Empresa**: Estructuras organizativas que agrupan a alumnos y tutores respectivamente.

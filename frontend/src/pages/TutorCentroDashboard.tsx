@@ -19,6 +19,17 @@ interface AlumnoData {
     isAprobado?: boolean;
 }
 
+interface NotificacionData {
+    id: number;
+    type: string;
+    title: string;
+    desc: string;
+    action: string;
+    icon: string;
+    leida: boolean;
+    date: string;
+}
+
 const CircularTimer: React.FC<{ start: string, end: string }> = ({ start, end }) => {
     if (!start || !end) return <div className="text-sm text-slate-500">Fechas no disponibles</div>;
 
@@ -63,6 +74,7 @@ const TutorCentroDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'resumen' | 'alumnos' | 'solicitudes' | 'mensajes' | 'empresas' | 'documentacion' | 'reportes'>('resumen');
     const [alumnos, setAlumnos] = useState<AlumnoData[]>([]);
     const [empresas, setEmpresas] = useState<any[]>([]);
+    const [notificaciones, setNotificaciones] = useState<NotificacionData[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ totalEmpresas: 0, pendingValidations: 0, alumnosValidados: 0, totalAlumnos: 0 });
     const [isValModalOpen, setIsValModalOpen] = useState(false);
@@ -115,8 +127,30 @@ const TutorCentroDashboard: React.FC = () => {
             }
         };
 
+        const fetchNotificaciones = async () => {
+            if (user?.email) {
+                try {
+                    const res = await axios.post('http://localhost:8000/api/notificaciones', { email: user.email });
+                    setNotificaciones(res.data.notificaciones || []);
+                } catch (e) {
+                    console.error("Error fetching notifications", e);
+                }
+            }
+        };
+
         fetchAlumnos();
+        fetchNotificaciones();
+
+        const notifInterval = setInterval(fetchNotificaciones, 30000);
+        return () => clearInterval(notifInterval);
     }, [user]);
+
+    const handleReadNotification = async (id: number) => {
+        try {
+            await axios.post(`http://localhost:8000/api/notificaciones/${id}/read`);
+            setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
+        } catch (e) { console.error(e); }
+    };
 
     const handleLogout = () => {
         logout();
@@ -131,6 +165,20 @@ const TutorCentroDashboard: React.FC = () => {
         } catch (error) {
             console.error("Error aprobando alumno:", error);
             alert("Error al aprobar alumno.");
+        }
+    };
+
+    const handleRemoveAlumno = async (id: number, nombre: string) => {
+        if (!confirm(`¿Estás seguro de que deseas eliminar al alumno ${nombre} de tu lista? Perderá el acceso y tendrá que solicitar nuevo tutor.`)) return;
+
+        try {
+            const res = await axios.post(`http://localhost:8000/api/tutor/alumno/${id}/remove`);
+            if (res.data.status === 'success') {
+                setAlumnos(prev => prev.filter(a => a.id !== id));
+            }
+        } catch (error) {
+            console.error('Error al eliminar alumno', error);
+            alert('Error al intentar eliminar a este alumno.');
         }
     };
 
@@ -300,7 +348,9 @@ const TutorCentroDashboard: React.FC = () => {
                         </div>
                         <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors">
                             <span className="material-symbols-outlined">notifications</span>
-                            <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+                            {notificaciones.filter(n => !n.leida).length > 0 && (
+                                <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+                            )}
                         </button>
                     </div>
                 </header>
@@ -450,6 +500,14 @@ const TutorCentroDashboard: React.FC = () => {
                                                             <td className="px-6 py-4">
                                                                 <div className="flex justify-end items-center gap-2">
                                                                     <button
+                                                                        onClick={() => handleRemoveAlumno(row.id, row.nombre)}
+                                                                        className="flex items-center justify-center p-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white transition-all group"
+                                                                        title="Eliminar Alumno"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-[20px]">person_remove</span>
+                                                                    </button>
+
+                                                                    <button
                                                                         onClick={() => handleOpenDetailModal(row.id)}
                                                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-primary hover:text-white dark:hover:bg-primary transition-all group"
                                                                         title="Ver Expediente"
@@ -504,32 +562,57 @@ const TutorCentroDashboard: React.FC = () => {
                                         <h3 className="font-bold dark:text-white">Alertas Recientes</h3>
                                     </div>
                                     <div className="space-y-4">
-                                        <div className="flex gap-4 p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 group hover:border-red-200 dark:hover:border-red-500/40 transition-all cursor-pointer">
-                                            <span className="material-symbols-outlined text-red-600 dark:text-red-400 text-[20px] shrink-0">timer_off</span>
-                                            <div>
-                                                <p className="text-xs font-bold text-red-900 dark:text-red-400">Documento Caducado</p>
-                                                <p className="text-[11px] text-red-700 dark:text-red-300/70 mt-1">Convenio Tech Solutions vence en 3 días.</p>
-                                                <button className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline mt-2">Gestionar ahora</button>
+                                        {notificaciones.filter(n => !n.leida).length === 0 ? (
+                                            <div className="p-6 text-center text-slate-500 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                                                <span className="material-symbols-outlined text-3xl opacity-50 mb-2">notifications_off</span>
+                                                <p className="text-xs font-bold">Sin alertas pendientes</p>
                                             </div>
-                                        </div>
-
-                                        <div className="flex gap-4 p-3 rounded-lg bg-primary/5 border border-primary/10 group hover:border-primary/30 transition-all cursor-pointer">
-                                            <span className="material-symbols-outlined text-primary text-[20px] shrink-0">notification_important</span>
-                                            <div>
-                                                <p className="text-xs font-bold text-primary">Validación Pendiente</p>
-                                                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">Nueva oferta de Global Logistics requiere aprobación.</p>
-                                                <button className="text-[11px] font-bold text-primary hover:underline mt-2">Ver oferta</button>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 group hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-pointer">
-                                            <span className="material-symbols-outlined text-slate-500 text-[20px] shrink-0">report</span>
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Falta Firma Alumno</p>
-                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Ana Belén no ha firmado el anexo de seguridad.</p>
-                                                <button className="text-[11px] font-bold text-slate-400 hover:text-primary transition-colors hover:underline mt-2">Notificar</button>
-                                            </div>
-                                        </div>
+                                        ) : (
+                                            notificaciones.filter(n => !n.leida).slice(0, 5).map(n => {
+                                                const bgColors = {
+                                                    'error': 'bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20 group-hover:border-red-200 dark:group-hover:border-red-500/40',
+                                                    'warning': 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20 group-hover:border-amber-200 dark:group-hover:border-amber-500/40',
+                                                    'success': 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 group-hover:border-emerald-200 dark:group-hover:border-emerald-500/40',
+                                                };
+                                                const textColors = {
+                                                    'error': 'text-red-900 dark:text-red-400',
+                                                    'warning': 'text-amber-900 dark:text-amber-400',
+                                                    'success': 'text-emerald-900 dark:text-emerald-400',
+                                                };
+                                                const subtextColors = {
+                                                    'error': 'text-red-700 dark:text-red-300/70',
+                                                    'warning': 'text-amber-700 dark:text-amber-300/70',
+                                                    'success': 'text-emerald-700 dark:text-emerald-300/70',
+                                                };
+                                                const iconColors = {
+                                                    'error': 'text-red-600 dark:text-red-400',
+                                                    'warning': 'text-amber-600 dark:text-amber-400',
+                                                    'success': 'text-emerald-600 dark:text-emerald-400',
+                                                };
+                                                
+                                                const isWarning = n.type === 'error' || n.type === 'warning';
+                                                const isSuccess = n.type === 'success';
+                                                
+                                                const containerClass = `flex gap-4 p-3 rounded-lg border group transition-all cursor-pointer relative ${
+                                                    isWarning ? bgColors['error'] : isSuccess ? bgColors['success'] : 'bg-primary/5 border-primary/10 hover:border-primary/30'
+                                                }`;
+                                                
+                                                return (
+                                                    <div key={n.id} onClick={() => {
+                                                        handleReadNotification(n.id);
+                                                        if (n.title.includes('Nuevo Alumno')) setActiveTab('solicitudes');
+                                                    }} className={containerClass}>
+                                                        {n.leida === false && <span className="absolute top-2 right-2 size-2 bg-primary rounded-full animate-pulse"></span>}
+                                                        <span className={`material-symbols-outlined text-[20px] shrink-0 ${isWarning ? iconColors['error'] : isSuccess ? iconColors['success'] : 'text-primary'}`}>{n.icon || 'notification_important'}</span>
+                                                        <div className="pr-4">
+                                                            <p className={`text-xs font-bold ${isWarning ? textColors['error'] : isSuccess ? textColors['success'] : 'text-primary'}`}>{n.title}</p>
+                                                            <p className={`text-[11px] mt-1 line-clamp-2 ${isWarning ? subtextColors['error'] : isSuccess ? subtextColors['success'] : 'text-slate-600 dark:text-slate-400'}`}>{n.desc}</p>
+                                                            {n.action && <button className={`text-[11px] font-bold mt-2 hover:underline ${isWarning ? iconColors['error'] : isSuccess ? iconColors['success'] : 'text-primary'}`}>{n.action}</button>}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                     <button className="w-full mt-6 text-xs text-slate-400 hover:text-primary transition-colors text-center border-t border-slate-100 dark:border-slate-800 pt-4">Historial de alertas</button>
                                 </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/UserContext';
 import ChatSystem from '../components/ChatSystem';
+import NotificationPanel from '../components/NotificationPanel';
 
 interface DashboardData {
     nombre: string;
@@ -192,21 +193,21 @@ const AlumnoDashboard: React.FC = () => {
             {/* Sidebar Navigation */}
             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col shrink-0 transition-colors duration-300">
                 <div className="p-6 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined text-2xl font-bold">school</span>
+                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
+                        <span className="material-symbols-outlined text-2xl font-bold">account_balance</span>
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold leading-tight dark:text-white">EduPrácticas</h1>
-                        <p className="text-xs text-[#616f89] dark:text-slate-400 font-medium uppercase tracking-wider">Connect</p>
+                        <h1 className="text-lg font-black leading-tight text-primary">SÉNECA</h1>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portal Alumnado</p>
                     </div>
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-1">
                     {[
                         { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '#' },
-                        { id: 'search', label: 'Buscar Ofertas', icon: 'search', path: '#' },
-                        { id: 'diario', label: 'Diario de Prácticas', icon: 'auto_stories', path: '#', show: dashboardData?.estado_practicas === 'VALIDADO' },
-                        { id: 'messages', label: 'Mensajes', icon: 'forum', path: '#' },
+                        { id: 'search', label: 'Buscar Ofertas', icon: 'search', path: '#', show: user?.isAprobado },
+                        { id: 'diario', label: 'Diario de Prácticas', icon: 'auto_stories', path: '#', show: user?.isAprobado && dashboardData?.estado_practicas === 'VALIDADO' },
+                        { id: 'messages', label: 'Mensajes', icon: 'forum', path: '#', show: user?.isAprobado },
                         { id: 'profile', label: 'Mi Perfil', icon: 'person', path: '/perfil/alumno' },
                     ].filter(i => i.show !== false).map((item) => (
                         <button
@@ -247,18 +248,18 @@ const AlumnoDashboard: React.FC = () => {
             {/* Main Content Wrapper */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top Bar */}
-                <header className="h-16 bg-white dark:bg-slate-900 border-b border-[#dbdfe6] dark:border-slate-800 flex items-center justify-between px-8 shrink-0 transition-colors duration-300">
-                    <h2 className="text-xl font-bold dark:text-white capitalize">
+                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md shrink-0 z-10">
+                    <h2 className="text-xl font-black capitalize">
                         {activeTab === 'search' ? 'Ofertas Disponibles' :
                             activeTab === 'diario' ? 'Diario de Prácticas' : 'Mi Dashboard'}
                     </h2>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3 cursor-pointer group">
                             <div className="text-right hidden sm:block">
-                                <p className="text-sm font-bold leading-none dark:text-white group-hover:text-primary transition-colors">{displayName}</p>
-                                <p className="text-[10px] text-[#616f89] dark:text-slate-400 mt-1 uppercase font-bold tracking-tighter">{displayGrade}</p>
+                                <p className="text-sm font-bold leading-none text-white group-hover:text-white/80 transition-colors">{displayName}</p>
+                                <p className="text-[10px] text-white/70 mt-1 uppercase font-bold tracking-tighter">{displayGrade}</p>
                             </div>
-                            <div className="size-10 rounded-full border-2 border-white dark:border-slate-800 shadow-sm overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            <div className="size-10 rounded-full border-2 border-white shadow-sm overflow-hidden bg-white text-primary flex items-center justify-center font-bold">
                                 {displayName.split(' ').map((n: string) => n[0]).join('')}
                             </div>
                         </div>
@@ -269,6 +270,34 @@ const AlumnoDashboard: React.FC = () => {
                 <main className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
                     {/* DASHBOARD TAB */}
                     {activeTab === 'dashboard' && (
+                        !user?.isAprobado ? (
+                            <div className="flex flex-col items-center justify-center p-12 text-center mt-10 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in zoom-in duration-500">
+                                <span className="material-symbols-outlined text-7xl text-amber-500 mb-6 drop-shadow-lg">lock_clock</span>
+                                <h2 className="text-3xl font-black mb-4 text-slate-800 dark:text-white">Acceso Limitado</h2>
+                                <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-10 text-lg leading-relaxed">
+                                    Tu cuenta no tiene un tutor de centro asignado o ha sido revocada. Para poder usar EduPrácticas Connect necesitas tener un tutor que apruebe tu usuario.<br/><br/>
+                                    Si has sido eliminado por error o ya no quieres formar parte del sistema, puedes borrar tu cuenta permanentemente.
+                                </p>
+                                <button
+                                    onClick={async () => {
+                                        if (confirm("¿Estás completamente seguro de querer borrar tu cuenta? Esta acción es irreversible y eliminará todos tus datos.")) {
+                                            try {
+                                                await axios.post('http://localhost:8000/api/alumno/account/delete', { email: user?.email });
+                                                alert("Cuenta eliminada con éxito.");
+                                                logout();
+                                                navigate('/');
+                                            } catch (e) {
+                                                alert("Error al intentar borrar la cuenta.");
+                                            }
+                                        }
+                                    }}
+                                    className="bg-red-50 text-red-600 border border-red-100 dark:border-red-500/20 dark:bg-red-500/10 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white px-8 py-4 rounded-xl font-black transition-all flex items-center gap-3 shadow-lg shadow-red-500/10 hover:shadow-red-500/30 hover:scale-105 active:scale-95 group"
+                                >
+                                    <span className="material-symbols-outlined group-hover:animate-bounce">delete_forever</span>
+                                    Borrar mi cuenta permanentemente
+                                </button>
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
                             <div className="lg:col-span-2 space-y-6">
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 p-6 shadow-sm overflow-hidden relative">
@@ -365,6 +394,7 @@ const AlumnoDashboard: React.FC = () => {
                             </div>
 
                             <div className="space-y-6">
+                                <NotificationPanel role="ALUMNO" />
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center min-h-[300px]">
                                     {dashboardData?.estado_practicas === 'VALIDADO' && dashboardData.fecha_inicio && dashboardData.fecha_fin ? (
                                         <CircularTimer start={dashboardData.fecha_inicio} end={dashboardData.fecha_fin} />
@@ -377,6 +407,7 @@ const AlumnoDashboard: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                        )
                     )}
 
                     {/* DIARIO TAB */}

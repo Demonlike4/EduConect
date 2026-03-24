@@ -38,6 +38,7 @@ const Login: React.FC = () => {
                 else if (userData.role === 'EMPRESA') navigate('/dashboard/empresa');
                 else if (userData.role === 'TUTOR_CENTRO') navigate('/dashboard/tutor-centro');
                 else if (userData.role === 'TUTOR_EMPRESA') navigate('/dashboard/tutor-empresa');
+                else if (userData.role === 'SUPERADMIN') navigate('/dashboard/superadmin');
                 else navigate('/');
             }
 
@@ -119,7 +120,7 @@ const Login: React.FC = () => {
                         <div>
                             <div className="flex justify-between items-center mb-2">
                                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="password">Contraseña</label>
-                                <button type="button" className="text-xs font-semibold text-primary hover:underline">¿Olvidaste tu contraseña?</button>
+                                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs font-semibold text-primary hover:underline">¿Olvidaste tu contraseña?</button>
                             </div>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">

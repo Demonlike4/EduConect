@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import NotificationPanel from '../components/NotificationPanel';
 import { useUser } from '../context/UserContext';
 
 
@@ -260,17 +261,19 @@ const EmpresaDashboard: React.FC = () => {
     const activeTutors = useMemo(() => tutores.filter(t => t.isAprobado), [tutores]);
     const activeOffers = useMemo(() => ofertas.filter(o => o.estado === 'Activa'), [ofertas]);
 
+    if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950"><span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span></div>;
+
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-display">
             {/* Sidebar */}
             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined">business</span>
+                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
+                        <span className="material-symbols-outlined">account_balance</span>
                     </div>
                     <div>
-                        <h1 className="text-sm font-bold dark:text-white">EduConect</h1>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Business Hub</p>
+                        <h1 className="text-sm font-black text-primary">SÉNECA</h1>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Empresa Colaboradora</p>
                     </div>
                 </div>
 
@@ -307,18 +310,18 @@ const EmpresaDashboard: React.FC = () => {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-background-dark">
-                <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 sticky top-0 z-10 flex items-center justify-between transition-colors duration-300">
+                <header className="bg-primary text-white border-b border-primary-dark px-8 py-4 sticky top-0 z-10 flex items-center justify-between shadow-md">
                     <div>
-                        <h2 className="text-xl font-bold dark:text-white capitalize">{activeTab.replace('_', ' ')}</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Gestiona tus procesos de selección actuales</p>
+                        <h2 className="text-xl font-black capitalize">{activeTab.replace('_', ' ')}</h2>
+                        <p className="text-sm text-white/80">Gestiona tus procesos de selección actuales</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 group cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-2xl transition-all border border-white/10 shadow-sm">
                             <div className="text-right hidden sm:block">
-                                <p className="text-xs font-bold dark:text-white">{empresaName}</p>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">Plan Premium</p>
+                                <p className="text-sm font-bold text-white leading-tight group-hover:text-white/90 transition-colors tracking-wide">{empresaName}</p>
+                                <p className="text-[10px] text-emerald-300 font-black tracking-widest uppercase mt-0.5">Empresa Colaboradora</p>
                             </div>
-                            <div className="size-9 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-primary font-bold">
+                            <div className="size-10 rounded-xl bg-linear-to-br from-white to-slate-100 flex items-center justify-center text-primary font-black shadow-inner shadow-primary/20 group-hover:scale-105 group-hover:-rotate-3 transition-transform border-2 border-white/20">
                                 {empresaName.substring(0, 2).toUpperCase()}
                             </div>
                         </div>
@@ -395,6 +398,14 @@ const EmpresaDashboard: React.FC = () => {
                             </div>
 
                             <div className="space-y-8">
+                                <NotificationPanel 
+                                    role="EMPRESA" 
+                                    onActionClick={(notif) => {
+                                        if (notif.title.includes('Nueva Candidatura')) {
+                                            setActiveTab('candidatos');
+                                        }
+                                    }}
+                                />
                                 <section className="bg-linear-to-br from-primary to-blue-600 p-6 rounded-3xl text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
                                     <div className="relative z-10">
                                         <h4 className="text-lg font-bold mb-2">Potencia tu Talento 🚀</h4>

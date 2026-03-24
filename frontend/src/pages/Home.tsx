@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useUser, type UserRole } from '../context/UserContext';
 
 const Home: React.FC = () => {
@@ -416,9 +416,9 @@ const Home: React.FC = () => {
                         <div>
                             <h4 className="font-bold mb-6">Legal</h4>
                             <ul className="flex flex-col gap-4 text-sm text-[#616f89] dark:text-slate-400">
-                                <li><a className="hover:text-primary" href="#">Privacidad</a></li>
-                                <li><a className="hover:text-primary" href="#">Términos de servicio</a></li>
-                                <li><a className="hover:text-primary" href="#">Cookies</a></li>
+                                <li><Link className="hover:text-primary" to="/privacidad">Privacidad</Link></li>
+                                <li><Link className="hover:text-primary" to="/terminos">Términos de servicio</Link></li>
+                                <li><Link className="hover:text-primary" to="/cookies">Cookies</Link></li>
                             </ul>
                         </div>
                     </div>

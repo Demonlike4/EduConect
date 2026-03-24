@@ -105,6 +105,14 @@ const Registro: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // Validar formato base de email en el cliente
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            setError("Por favor, introduce un correo electrónico válido.");
+            setLoading(false);
+            return;
+        }
+
         try {
             const data = {
                 nombre,
