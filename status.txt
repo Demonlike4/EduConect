@@ -1,0 +1,23 @@
+﻿ m backend
+ M frontend/src/App.tsx
+ M frontend/src/context/UserContext.tsx
+ M frontend/src/index.css
+ M frontend/src/pages/AlumnoDashboard.tsx
+ M frontend/src/pages/EmpresaDashboard.tsx
+ M frontend/src/pages/Home.tsx
+ M frontend/src/pages/PerfilAlumno.tsx
+ M frontend/src/pages/Registro.tsx
+ M frontend/src/pages/TutorAlumnos.tsx
+ M frontend/src/pages/TutorCentroDashboard.tsx
+ M frontend/src/pages/TutorEmpresaDashboard.tsx
+?? diff.txt
+?? frontend/src/components/NotificationPanel.tsx
+?? frontend/src/components/ThemeToggle.tsx
+?? frontend/src/context/ThemeContext.tsx
+?? frontend/src/pages/Cookies.tsx
+?? frontend/src/pages/ForgotPassword.tsx
+?? frontend/src/pages/Privacidad.tsx
+?? frontend/src/pages/ResetPassword.tsx
+?? frontend/src/pages/SuperAdminDashboard.tsx
+?? frontend/src/pages/Terminos.tsx
+?? status.txt

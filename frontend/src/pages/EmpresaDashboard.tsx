@@ -35,57 +35,23 @@ interface Tutor {
     isAprobado: boolean;
 }
 
-const CircularTimer = ({ start, end }: { start: string, end: string }) => {
+const TimeProgress = ({ start, end }: { start: string, end: string }) => {
     const startDate = new Date(start).getTime();
     const endDate = new Date(end).getTime();
     const now = new Date().getTime();
 
     const totalDuration = endDate - startDate;
     const timeLeft = endDate - now;
-
-    // Normalize progress (0 to 100)
-    let progress = 100;
-    if (totalDuration > 0) {
-        progress = Math.max(0, Math.min(100, (timeLeft / totalDuration) * 100));
-    }
-
+    const progress = Math.max(0, Math.min(100, (1 - (timeLeft / totalDuration)) * 100));
     const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
 
-    const radius = 40;
-    const circumference = 2 * Math.PI * radius;
-    const dashoffset = circumference - (progress / 100) * circumference;
-
     return (
-        <div className="flex flex-col items-center justify-center">
-            <div className="relative size-32 flex items-center justify-center">
-                <svg className="size-full -rotate-90">
-                    <circle
-                        cx="64"
-                        cy="64"
-                        r={radius}
-                        fill="transparent"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        className="text-slate-100 dark:text-slate-800"
-                    />
-                    <circle
-                        cx="64"
-                        cy="64"
-                        r={radius}
-                        fill="transparent"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        strokeDasharray={circumference}
-                        style={{ strokeDashoffset: dashoffset }}
-                        className="text-primary transition-all duration-1000 ease-out"
-                    />
-                </svg>
-                <div className="absolute flex flex-col items-center">
-                    <span className="text-2xl font-bold dark:text-white">{daysLeft > 0 ? daysLeft : 0}</span>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">Días</p>
-                </div>
+        <div className="flex flex-col items-center">
+            <span className="text-2xl font-bold dark:text-white">{daysLeft > 0 ? daysLeft : 0}</span>
+            <p className="text-[10px] text-gray-500 font-bold uppercase">Días Restantes</p>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 rounded mt-2 overflow-hidden">
+                <div className="bg-primary h-full transition-none" style={{ width: `${progress}%` }}></div>
             </div>
-            <p className="text-xs text-center mt-2 font-semibold text-slate-400">Restantes</p>
         </div>
     );
 };
@@ -264,16 +230,15 @@ const EmpresaDashboard: React.FC = () => {
     if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950"><span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span></div>;
 
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-display">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
-                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
-                        <span className="material-symbols-outlined">account_balance</span>
-                    </div>
-                    <div>
-                        <h1 className="text-sm font-black text-primary">SÉNECA</h1>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Empresa Colaboradora</p>
+        <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-background-dark text-gray-900 dark:text-gray-100">
+            {/* Sidebar Navigation */}
+            <aside className="w-64 bg-white dark:bg-gray-800 border-r border-[#e0e0e0] dark:border-white/10 flex flex-col shrink-0">
+                <div className="p-6 border-b border-[#e0e0e0] dark:border-white/10 cursor-pointer" onClick={() => navigate('/')}>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-primary p-2 rounded text-white shadow-sm">
+                            <span className="material-symbols-outlined text-xl">corporate_fare</span>
+                        </div>
+                        <h1 className="text-lg font-bold text-gray-800 dark:text-white uppercase tracking-tight">EduConect</h1>
                     </div>
                 </div>
 
@@ -294,34 +259,33 @@ const EmpresaDashboard: React.FC = () => {
                         <span className="material-symbols-outlined text-[20px]">add_circle</span>
                         <span className="text-sm">Publicar Oferta</span>
                     </button>
-                    <button onClick={() => setActiveTab('tutores')} className={`flex w-full items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'tutores' ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <button onClick={() => setActiveTab('tutores')} className={`flex w-full items-center gap-3 px-3 py-2 rounded text-sm font-medium ${activeTab === 'tutores' ? 'bg-primary text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}>
                         <span className="material-symbols-outlined text-[20px]">supervisor_account</span>
-                        <span className="text-sm">Gestionar Tutores {pendingTutors.length > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] size-4 rounded-full flex items-center justify-center animate-pulse">{pendingTutors.length}</span>}</span>
+                        <span>Tutores {pendingTutors.length > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] size-4 rounded-full flex items-center justify-center font-bold">{pendingTutors.length}</span>}</span>
                     </button>
 
                 </nav>
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                    <button onClick={handleLogout} className="flex w-full items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                <div className="p-4 border-t border-[#e0e0e0] dark:border-white/10">
+                    <button onClick={handleLogout} className="flex w-full items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded transition-none">
                         <span className="material-symbols-outlined text-[20px]">logout</span>
-                        <span className="text-sm font-medium">Cerrar Sesión</span>
+                        <span className="text-sm font-bold">Cerrar Sesión</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-background-dark">
-                <header className="bg-primary text-white border-b border-primary-dark px-8 py-4 sticky top-0 z-10 flex items-center justify-between shadow-md">
-                    <div>
-                        <h2 className="text-xl font-black capitalize">{activeTab.replace('_', ' ')}</h2>
-                        <p className="text-sm text-white/80">Gestiona tus procesos de selección actuales</p>
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-background-dark">
+                <header className="h-16 bg-white dark:bg-gray-800 border-b border-[#e0e0e0] dark:border-white/10 flex items-center justify-between px-8">
+                    <div className="flex flex-col">
+                        <h2 className="text-lg font-bold dark:text-white uppercase tracking-tight">{activeTab.replace('_', ' ')}</h2>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 group cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-2xl transition-all border border-white/10 shadow-sm">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-sm font-bold text-white leading-tight group-hover:text-white/90 transition-colors tracking-wide">{empresaName}</p>
-                                <p className="text-[10px] text-emerald-300 font-black tracking-widest uppercase mt-0.5">Empresa Colaboradora</p>
+                        <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 px-4 py-1.5 rounded border border-[#e0e0e0] dark:border-white/5">
+                            <div className="text-right">
+                                <p className="text-xs font-bold dark:text-white">{empresaName}</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Cuentas Empresa</p>
                             </div>
-                            <div className="size-10 rounded-xl bg-linear-to-br from-white to-slate-100 flex items-center justify-center text-primary font-black shadow-inner shadow-primary/20 group-hover:scale-105 group-hover:-rotate-3 transition-transform border-2 border-white/20">
+                            <div className="size-8 rounded bg-primary text-white flex items-center justify-center font-bold text-sm">
                                 {empresaName.substring(0, 2).toUpperCase()}
                             </div>
                         </div>
@@ -576,7 +540,7 @@ const EmpresaDashboard: React.FC = () => {
 
                                             <div className="flex flex-col items-center justify-center border-l border-slate-100 dark:border-slate-800 md:pl-8">
                                                 {selectedCandidato.estado === 'VALIDADO' ? (
-                                                    <CircularTimer start={selectedCandidato.fecha_inicio!} end={selectedCandidato.fecha_fin!} />
+                                                    <TimeProgress start={selectedCandidato.fecha_inicio!} end={selectedCandidato.fecha_fin!} />
                                                 ) : (
                                                     <div className="py-8 text-slate-400 text-sm text-center">
                                                         <span className="material-symbols-outlined text-[60px] mb-4 block opacity-30">pending_actions</span>

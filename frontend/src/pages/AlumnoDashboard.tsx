@@ -36,44 +36,34 @@ interface Oferta {
     tags: string[];
 }
 
-const CircularTimer: React.FC<{ start: string, end: string }> = ({ start, end }) => {
-    if (!start || !end) return <div className="text-sm text-slate-500">Fechas no disponibles</div>;
+const TimeProgress: React.FC<{ start: string, end: string }> = ({ start, end }) => {
+    if (!start || !end) return <div className="text-sm text-gray-500">Fechas no disponibles</div>;
 
     const startDate = new Date(start).getTime();
     const endDate = new Date(end).getTime();
     const now = new Date().getTime();
 
     const totalDuration = endDate - startDate;
-    const timeLeft = endDate - now;
-
-    // Normalize progress (0 to 100)
-    let progress = 100;
-    if (totalDuration > 0) {
-        progress = Math.max(0, Math.min(100, (timeLeft / totalDuration) * 100));
-    }
-
-    const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
-    const radius = 50;
-    const circumference = 2 * Math.PI * radius;
-    const dashoffset = circumference - (progress / 100) * circumference;
+    const elapsed = now - startDate;
+    const progress = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
+    const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
 
     return (
-        <div className="flex flex-col items-center justify-center">
-            <div className="relative size-40 flex items-center justify-center">
-                <svg className="transform -rotate-90 size-40">
-                    <circle cx="80" cy="80" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-slate-800" />
-                    <circle cx="80" cy="80" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className={`text-primary transition-all duration-1000 ease-out`} strokeDasharray={circumference} strokeDashoffset={dashoffset} strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-black dark:text-white">{Math.max(0, daysLeft)}</span>
-                    <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Días</span>
+        <div className="w-full">
+            <div className="flex justify-between items-end mb-2">
+                <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase">Tiempo Restante</p>
+                    <p className="text-lg font-bold text-gray-800 dark:text-white">{Math.max(0, daysLeft)} Días</p>
                 </div>
+                <p className="text-xs text-gray-500 font-bold">{Math.round(progress)}%</p>
             </div>
-            <div className="text-center mt-4 space-y-1">
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Tiempo Restante</p>
-                <p className="text-xs text-slate-500">{start} - {end}</p>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 h-2 rounded overflow-hidden">
+                <div 
+                    className="bg-primary h-full transition-none" 
+                    style={{ width: `${progress}%` }}
+                ></div>
             </div>
+            <p className="text-[10px] text-gray-400 mt-2 text-center">{start} al {end}</p>
         </div>
     );
 };
@@ -189,57 +179,51 @@ const AlumnoDashboard: React.FC = () => {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark text-[#111318] dark:text-slate-100 font-display transition-colors duration-300">
+        <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-background-dark text-gray-900 dark:text-gray-100">
             {/* Sidebar Navigation */}
-            <aside className="w-64 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col shrink-0 transition-colors duration-300">
-                <div className="p-6 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
-                        <span className="material-symbols-outlined text-2xl font-bold">account_balance</span>
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-black leading-tight text-primary">SÉNECA</h1>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portal Alumnado</p>
+            <aside className="w-64 bg-white dark:bg-gray-800 border-r border-[#e0e0e0] dark:border-white/10 flex flex-col shrink-0">
+                <div className="p-6 border-b border-[#e0e0e0] dark:border-white/10 cursor-pointer" onClick={() => navigate('/')}>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-primary p-2 rounded text-white">
+                            <span className="material-symbols-outlined text-xl">school</span>
+                        </div>
+                        <h1 className="text-lg font-bold text-gray-800 dark:text-white uppercase tracking-tight">EduConect</h1>
                     </div>
                 </div>
 
-                <nav className="flex-1 px-3 py-4 space-y-1">
+                <nav className="flex-1 p-4 space-y-1">
                     {[
-                        { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '#' },
-                        { id: 'search', label: 'Buscar Ofertas', icon: 'search', path: '#', show: user?.isAprobado },
-                        { id: 'diario', label: 'Diario de Prácticas', icon: 'auto_stories', path: '#', show: user?.isAprobado && dashboardData?.estado_practicas === 'VALIDADO' },
-                        { id: 'messages', label: 'Mensajes', icon: 'forum', path: '#', show: user?.isAprobado },
+                        { id: 'dashboard', label: 'Mi Panel', icon: 'dashboard', path: '#' },
+                        { id: 'search', label: 'Ver Ofertas', icon: 'search', path: '#', show: user?.isAprobado },
+                        { id: 'diario', label: 'Diario de FCT', icon: 'description', path: '#', show: user?.isAprobado && dashboardData?.estado_practicas === 'VALIDADO' },
+                        { id: 'messages', label: 'Mensajes', icon: 'chat', path: '#', show: user?.isAprobado },
                         { id: 'profile', label: 'Mi Perfil', icon: 'person', path: '/perfil/alumno' },
                     ].filter(i => i.show !== false).map((item) => (
                         <button
                             key={item.id}
                             onClick={() => {
-                                if (item.path !== '#') {
-                                    navigate(item.path);
-                                } else {
-                                    setActiveTab(item.id);
-                                }
+                                if (item.path !== '#') navigate(item.path);
+                                else setActiveTab(item.id);
                             }}
-                            className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${activeTab === item.id
-                                ? 'bg-primary/5 text-primary border-r-4 border-primary'
-                                : 'text-[#616f89] dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-primary'
+                            className={`flex w-full items-center gap-3 px-4 py-2 rounded text-sm font-medium ${activeTab === item.id
+                                ? 'bg-primary text-white'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
                                 }`}
                         >
-                            <span className={`material-symbols-outlined text-[22px] ${activeTab === item.id ? 'font-bold' : ''}`}>
+                            <span className="material-symbols-outlined text-[20px]">
                                 {item.icon}
                             </span>
-                            <span className={`text-sm ${activeTab === item.id ? 'font-bold' : 'font-medium'}`}>
-                                {item.label}
-                            </span>
+                            {item.label}
                         </button>
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-[#dbdfe6] dark:border-slate-800">
+                <div className="p-4 border-t border-[#e0e0e0] dark:border-white/10">
                     <button
                         onClick={handleLogout}
-                        className="flex w-full items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 dark:bg-white/5 text-[#616f89] dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl text-sm font-bold transition-all"
+                        className="flex w-full items-center justify-center gap-2 px-4 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-sm font-bold transition-none"
                     >
-                        <span className="material-symbols-outlined text-[20px]">logout</span>
+                        <span className="material-symbols-outlined text-[18px]">logout</span>
                         Cerrar Sesión
                     </button>
                 </div>
@@ -248,18 +232,18 @@ const AlumnoDashboard: React.FC = () => {
             {/* Main Content Wrapper */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top Bar */}
-                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md shrink-0 z-10">
-                    <h2 className="text-xl font-black capitalize">
+                <header className="h-16 bg-white dark:bg-gray-800 border-b border-[#e0e0e0] dark:border-white/10 flex items-center justify-between px-8 shrink-0 z-10">
+                    <h2 className="text-xl font-bold dark:text-white">
                         {activeTab === 'search' ? 'Ofertas Disponibles' :
-                            activeTab === 'diario' ? 'Diario de Prácticas' : 'Mi Dashboard'}
+                            activeTab === 'diario' ? 'Diario' : 'Mi Portal'}
                     </h2>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 cursor-pointer group">
+                        <div className="flex items-center gap-3">
                             <div className="text-right hidden sm:block">
-                                <p className="text-sm font-bold leading-none text-white group-hover:text-white/80 transition-colors">{displayName}</p>
-                                <p className="text-[10px] text-white/70 mt-1 uppercase font-bold tracking-tighter">{displayGrade}</p>
+                                <p className="text-sm font-bold text-gray-800 dark:text-white leading-none">{displayName}</p>
+                                <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold">{displayGrade}</p>
                             </div>
-                            <div className="size-10 rounded-full border-2 border-white shadow-sm overflow-hidden bg-white text-primary flex items-center justify-center font-bold">
+                            <div className="size-8 rounded bg-primary text-white flex items-center justify-center font-bold text-sm">
                                 {displayName.split(' ').map((n: string) => n[0]).join('')}
                             </div>
                         </div>
@@ -298,9 +282,9 @@ const AlumnoDashboard: React.FC = () => {
                                 </button>
                             </div>
                         ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 space-y-6">
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 p-6 shadow-sm overflow-hidden relative">
+                                <div className="bg-white dark:bg-gray-800 rounded border border-[#e0e0e0] dark:border-white/10 p-6">
                                     <div className="relative z-10 flex justify-between items-start">
                                         <div>
                                             <h3 className="font-bold text-lg dark:text-white mb-2">Estado de tus Prácticas</h3>
@@ -395,13 +379,13 @@ const AlumnoDashboard: React.FC = () => {
 
                             <div className="space-y-6">
                                 <NotificationPanel role="ALUMNO" />
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 p-6 shadow-sm flex flex-col items-center justify-center min-h-[300px]">
+                                <div className="bg-white dark:bg-gray-800 rounded border border-[#e0e0e0] dark:border-white/10 p-6 flex flex-col items-center justify-center min-h-[200px]">
                                     {dashboardData?.estado_practicas === 'VALIDADO' && dashboardData.fecha_inicio && dashboardData.fecha_fin ? (
-                                        <CircularTimer start={dashboardData.fecha_inicio} end={dashboardData.fecha_fin} />
+                                        <TimeProgress start={dashboardData.fecha_inicio} end={dashboardData.fecha_fin} />
                                     ) : (
-                                        <div className="text-center text-slate-400">
-                                            <span className="material-symbols-outlined text-6xl mb-2 opacity-20">timer_off</span>
-                                            <p className="text-sm">El contador se activará<br />cuando valides tus prácticas.</p>
+                                        <div className="text-center text-gray-400">
+                                            <span className="material-symbols-outlined text-4xl mb-2">timer_off</span>
+                                            <p className="text-xs">Cronograma no activo</p>
                                         </div>
                                     )}
                                 </div>

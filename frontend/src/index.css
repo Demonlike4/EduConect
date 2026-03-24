@@ -3,25 +3,25 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --color-primary: #008a3f;
-    --color-primary-dark: #006b31;
-    --color-background-light: #f6f6f8;
-    --color-background-dark: #101622;
+    --color-primary: #1a73e8; /* Standard Corporate Blue */
+    --color-primary-dark: #1557b0;
+    --color-background-light: #ffffff;
+    --color-background-dark: #1a1c1e;
 
-    --font-display: "Inter", sans-serif;
+    --font-display: "Inter", "Segoe UI", Tahoma, sans-serif;
 
     --radius-DEFAULT: 0.25rem;
-    --radius-lg: 0.5rem;
-    --radius-xl: 0.75rem;
+    --radius-lg: 0.375rem;
+    --radius-xl: 0.5rem;
     --radius-full: 9999px;
 }
 
 @layer base {
     body {
-        @apply font-display text-[#111318] dark:text-white bg-background-light dark:bg-background-dark transition-colors duration-300;
+        @apply font-display text-[#202124] dark:text-gray-200 bg-background-light dark:bg-background-dark;
     }
 }
 
 .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}

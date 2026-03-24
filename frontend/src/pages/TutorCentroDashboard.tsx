@@ -30,8 +30,8 @@ interface NotificacionData {
     date: string;
 }
 
-const CircularTimer: React.FC<{ start: string, end: string }> = ({ start, end }) => {
-    if (!start || !end) return <div className="text-sm text-slate-500">Fechas no disponibles</div>;
+const TimeProgress: React.FC<{ start: string, end: string }> = ({ start, end }) => {
+    if (!start || !end) return <div className="text-xs text-gray-400 font-bold uppercase">No activo</div>;
 
     const startDate = new Date(start).getTime();
     const endDate = new Date(end).getTime();
@@ -39,30 +39,15 @@ const CircularTimer: React.FC<{ start: string, end: string }> = ({ start, end })
 
     const totalDuration = endDate - startDate;
     const elapsed = now - startDate;
-
-    let progress = 0;
-    if (totalDuration > 0) {
-        progress = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
-    }
-
-    const timeLeft = endDate - now;
-    const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
-    const radius = 45;
-    const circumference = 2 * Math.PI * radius;
-    const dashoffset = circumference - (progress / 100) * circumference;
+    const progress = Math.max(0, Math.min(100, (elapsed / totalDuration) * 100));
+    const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
 
     return (
-        <div className="flex flex-col items-center justify-center">
-            <div className="relative size-32 flex items-center justify-center">
-                <svg className="transform -rotate-90 size-32">
-                    <circle cx="64" cy="64" r={radius} stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-100 dark:text-slate-800" />
-                    <circle cx="64" cy="64" r={radius} stroke="currentColor" strokeWidth="8" fill="transparent" className={`text-primary transition-all duration-1000 ease-out`} strokeDasharray={circumference} strokeDashoffset={dashoffset} strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-black dark:text-white">{Math.max(0, daysLeft)}</span>
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Días</span>
-                </div>
+        <div className="flex flex-col items-center">
+            <span className="text-2xl font-bold dark:text-white">{Math.max(0, daysLeft)}</span>
+            <span className="text-[10px] text-gray-500 font-bold uppercase">Días</span>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 rounded mt-2 overflow-hidden">
+                <div className="bg-primary h-full transition-none" style={{ width: `${progress}%` }}></div>
             </div>
         </div>
     );
@@ -267,16 +252,15 @@ const TutorCentroDashboard: React.FC = () => {
     const approvedStudents = alumnos.filter(a => a.isAprobado !== false);
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
-                <div className="p-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 cursor-pointer" onClick={() => navigate('/')}>
-                    <div className="size-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                        <span className="material-symbols-outlined text-2xl">school</span>
-                    </div>
-                    <div>
-                        <h1 className="text-sm font-bold leading-tight dark:text-white">EduPrácticas</h1>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Connect Panel</p>
+        <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-background-dark text-gray-900 dark:text-gray-100">
+            {/* Sidebar Navigation */}
+            <aside className="w-64 bg-white dark:bg-gray-800 border-r border-[#e0e0e0] dark:border-white/10 flex flex-col shrink-0">
+                <div className="p-6 border-b border-[#e0e0e0] dark:border-white/10 cursor-pointer" onClick={() => navigate('/')}>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-primary p-2 rounded text-white">
+                            <span className="material-symbols-outlined text-xl">school</span>
+                        </div>
+                        <h1 className="text-lg font-bold text-gray-800 dark:text-white uppercase tracking-tight">EduConect</h1>
                     </div>
                 </div>
 
@@ -293,23 +277,20 @@ const TutorCentroDashboard: React.FC = () => {
                         <button
                             key={item.id}
                             onClick={() => {
-                                if (item.path && item.path !== '#') {
-                                    navigate(item.path);
-                                } else {
-                                    setActiveTab(item.id as any);
-                                }
+                                if (item.path && item.path !== '#') navigate(item.path);
+                                else setActiveTab(item.id as any);
                             }}
-                            className={`flex w-full items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group ${activeTab === item.id
-                                ? 'bg-primary/10 text-primary font-bold'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            className={`flex w-full items-center justify-between px-3 py-2 rounded text-sm font-medium ${activeTab === item.id
+                                ? 'bg-primary text-white'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
                                 }`}
                         >
                             <div className="flex items-center gap-3">
                                 <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                                <span className="text-sm">{item.label}</span>
+                                <span>{item.label}</span>
                             </div>
                             {item.badge && (
-                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg shadow-red-500/30">
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                                     {item.badge}
                                 </span>
                             )}
@@ -317,16 +298,16 @@ const TutorCentroDashboard: React.FC = () => {
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
-                        <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-primary font-bold overflow-hidden">
+                <div className="p-4 border-t border-[#e0e0e0] dark:border-white/10">
+                    <div className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-none group">
+                        <div className="size-8 rounded bg-primary text-white flex items-center justify-center font-bold text-sm">
                             {displayName.split(' ').map(n => n[0]).join('').substring(0, 2)}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold truncate dark:text-white group-hover:text-primary transition-colors">{displayName}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{displayRole}</p>
+                            <p className="text-xs font-bold truncate dark:text-white">{displayName}</p>
+                            <p className="text-[10px] text-gray-500 truncate">{displayRole}</p>
                         </div>
-                        <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors">
+                        <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition-none">
                             <span className="material-symbols-outlined text-[18px]">logout</span>
                         </button>
                     </div>
@@ -335,21 +316,21 @@ const TutorCentroDashboard: React.FC = () => {
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-background-dark">
-                <header className="h-16 bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 transition-colors duration-300">
-                    <h2 className="text-lg font-bold dark:text-white">Panel de Gestión - {user?.centro || 'Vista General'}</h2>
+                <header className="h-16 bg-white dark:bg-gray-800 border-b border-[#e0e0e0] dark:border-white/10 flex items-center justify-between px-8">
+                    <h2 className="text-lg font-bold dark:text-white">Panel de Tutor - {user?.centro || 'Centro'}</h2>
                     <div className="flex items-center gap-4">
-                        <div className="relative group">
-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+                        <div className="relative">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                             <input
-                                className="pl-10 pr-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-background-dark text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent w-64 outline-none transition-all placeholder:text-slate-400"
-                                placeholder="Buscar alumnos o empresas..."
+                                className="pl-10 pr-4 py-1.5 rounded border border-[#e0e0e0] dark:border-white/10 bg-gray-50 dark:bg-gray-700 text-sm outline-none w-64"
+                                placeholder="Buscar..."
                                 type="text"
                             />
                         </div>
-                        <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors">
+                        <button className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded relative">
                             <span className="material-symbols-outlined">notifications</span>
                             {notificaciones.filter(n => !n.leida).length > 0 && (
-                                <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+                                <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border border-white"></span>
                             )}
                         </button>
                     </div>
@@ -358,14 +339,13 @@ const TutorCentroDashboard: React.FC = () => {
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                     {/* SOLICITUDES TAB */}
                     {activeTab === 'solicitudes' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">
-                            <div className="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                                    <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary">person_add</span>
-                                        Solicitudes de Acceso Pendientes
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-gray-800 rounded border border-[#e0e0e0] dark:border-white/10 overflow-hidden">
+                                <div className="p-6 border-b border-gray-100 dark:border-white/5">
+                                    <h3 className="font-bold text-lg dark:text-white flex items-center gap-2 uppercase tracking-tight">
+                                        Solicitudes Pendientes
                                     </h3>
-                                    <p className="text-sm text-slate-500 mt-1">Alumnos que se han registrado seleccionándote como tutor y esperan aprobación.</p>
+                                    <p className="text-sm text-gray-500 mt-1">Alumnos que esperan validación para entrar al sistema.</p>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
@@ -417,33 +397,30 @@ const TutorCentroDashboard: React.FC = () => {
                         <div className="flex flex-col lg:flex-row gap-8">
                             <div className="flex-1 flex flex-col gap-8">
                                 {/* KPI Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom duration-500 delay-100">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {[
-                                        { label: 'Alumnos Validados', value: stats.alumnosValidados.toString(), change: `de ${stats.totalAlumnos} totales`, icon: 'person_check', color: 'green', primaryColor: 'primary' },
-                                        { label: 'Empresas Activas', value: stats.totalEmpresas.toString(), change: 'Estable', icon: 'domain', color: 'slate', primaryColor: 'primary' },
-                                        { label: 'Validaciones Pendientes', value: stats.pendingValidations.toString(), change: '+Active', icon: 'priority_high', color: 'red', primaryColor: 'amber' },
+                                        { label: 'Alumnos Validados', value: stats.alumnosValidados.toString(), change: `de ${stats.totalAlumnos} totales`, icon: 'person_check', primaryColor: 'primary' },
+                                        { label: 'Empresas Activas', value: stats.totalEmpresas.toString(), change: 'Estable', icon: 'domain', primaryColor: 'primary' },
+                                        { label: 'Validaciones Pendientes', value: stats.pendingValidations.toString(), change: '+Active', icon: 'priority_high', primaryColor: 'primary' },
                                     ].map((kpi, index) => (
-                                        <div key={index} className="bg-white dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-primary/30 transition-all">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <span className={`material-symbols-outlined text-${kpi.primaryColor === 'amber' ? 'amber-600' : 'primary'} bg-${kpi.primaryColor === 'amber' ? 'amber-50 dark:bg-amber-500/10' : 'primary/10'} p-2 rounded-lg`}>{kpi.icon}</span>
-                                                <span className={`text-xs font-semibold px-2 py-1 rounded ${kpi.color === 'green' ? 'text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400' :
-                                                    kpi.color === 'red' ? 'text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400' :
-                                                        'text-slate-500 bg-slate-50 dark:text-slate-400 dark:bg-slate-800'
-                                                    }`}>{kpi.change}</span>
+                                        <div key={index} className="bg-white dark:bg-gray-800 p-6 rounded border border-[#e0e0e0] dark:border-white/10">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="material-symbols-outlined text-primary">{kpi.icon}</span>
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase">{kpi.change}</span>
                                             </div>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{kpi.label}</p>
-                                            <h3 className="text-3xl font-bold dark:text-white">{kpi.value}</h3>
+                                            <p className="text-xs text-gray-500 font-bold uppercase mb-1">{kpi.label}</p>
+                                            <h3 className="text-2xl font-bold dark:text-white">{kpi.value}</h3>
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Assignments Table */}
-                                <div className="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom duration-500 delay-200">
-                                    <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                                        <h3 className="font-bold text-lg dark:text-white">Gestión de Alumnos del Centro</h3>
-                                        <button className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-primary/20">
+                                <div className="bg-white dark:bg-gray-800 rounded border border-[#e0e0e0] dark:border-white/10 overflow-hidden">
+                                    <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+                                        <h3 className="font-bold text-lg dark:text-white uppercase tracking-tight">Gestión Alumnado</h3>
+                                        <button className="bg-primary text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2">
                                             <span className="material-symbols-outlined text-[18px]">add</span>
-                                            Nueva Asignación
+                                            Asignar
                                         </button>
                                     </div>
                                     <div className="overflow-x-auto">
@@ -977,8 +954,8 @@ const TutorCentroDashboard: React.FC = () => {
                                                                 </div>
                                                             </div>
 
-                                                            {/* Mini Circular Progress */}
-                                                            <CircularTimer start={studentDetail.candidatura.fechaInicio} end={studentDetail.candidatura.fechaFin} />
+                                                            {/* Mini Progress */}
+                                                            <TimeProgress start={studentDetail.candidatura.fechaInicio} end={studentDetail.candidatura.fechaFin} />
 
                                                             <div className="mt-8 grid grid-cols-2 gap-4 w-full">
                                                                 <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">

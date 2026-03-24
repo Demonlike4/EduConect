@@ -93,10 +93,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
     };
 
     return (
-        <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-full animate-in fade-in duration-500">
-            <div className="flex items-center gap-3 mb-6">
-                <span className="material-symbols-outlined text-amber-500 text-2xl md:text-3xl">warning</span>
-                <h3 className="text-xl md:text-2xl font-bold dark:text-white tracking-tight">Alertas Recientes</h3>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded border border-[#e0e0e0] dark:border-white/10 flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 dark:border-white/5 pb-4">
+                <span className="material-symbols-outlined text-amber-600 text-[22px]">notifications</span>
+                <h3 className="text-lg font-bold dark:text-white uppercase tracking-tight">Notificaciones</h3>
             </div>
             
             <div className="flex flex-col gap-4 flex-1">
@@ -117,26 +117,24 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
                     notifications.filter(n => !n.leida).map((notif) => {
                         const styles = getStylesByType(notif.type);
                         return (
-                            <div key={notif.id} className={`p-4 rounded-xl border ${styles.bg} ${styles.border} flex flex-col transition-all hover:scale-[1.01]`}>
-                                <div className="flex items-start gap-4">
-                                    <span className={`material-symbols-outlined ${styles.iconColor} text-[22px]`}>
+                            <div key={notif.id} className={`p-3 rounded border ${styles.bg} ${styles.border} flex flex-col`}>
+                                <div className="flex items-start gap-3">
+                                    <span className={`material-symbols-outlined ${styles.iconColor} text-[20px]`}>
                                         {notif.icon || 'notifications'}
                                     </span>
-                                    <div className="flex-1 mt-0.5">
-                                        <h4 className={`font-bold text-[15px] leading-tight mb-1 ${styles.titleColor}`}>
+                                    <div className="flex-1">
+                                        <h4 className={`font-bold text-sm leading-tight mb-1 ${styles.titleColor}`}>
                                             {notif.title}
                                         </h4>
-                                        <p className={`text-sm leading-snug mb-3 ${styles.descColor}`}>
+                                        <p className={`text-xs leading-snug mb-2 ${styles.descColor}`}>
                                             {notif.desc}
                                         </p>
-                                        <div className="flex items-center gap-4">
-                                            <button 
-                                                onClick={() => markAsRead(notif)}
-                                                className={`text-sm font-bold ${styles.actionColor} hover:underline`}
-                                            >
-                                                {notif.action || 'Marcar leída'}
-                                            </button>
-                                        </div>
+                                        <button 
+                                            onClick={() => markAsRead(notif)}
+                                            className="text-xs font-bold text-primary hover:underline"
+                                        >
+                                            {notif.action || 'Aceptar'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -145,9 +143,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
                 )}
             </div>
             
-            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
-                <button className="text-sm font-medium text-slate-400 hover:text-primary transition-colors hover:underline">
-                    Historial de alertas
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10 text-center">
+                <button className="text-xs font-medium text-gray-400 hover:text-primary transition-none">
+                    Ver historial
                 </button>
             </div>
         </div>

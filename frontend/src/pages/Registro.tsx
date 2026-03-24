@@ -157,16 +157,16 @@ const Registro: React.FC = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,var(--tw-gradient-from)_0%,transparent_25%),radial-gradient(circle_at_bottom_left,var(--tw-gradient-from)_0%,transparent_25%)] from-primary/5">
+        <div className="min-h-screen bg-gray-50 dark:bg-background-dark flex flex-col items-center justify-center p-6">
             {/* Logo Section */}
-            <div className="flex items-center gap-3 mb-10 hover:cursor-pointer" onClick={() => navigate('/')}>
-                <div className="bg-primary p-2 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                    <span className="material-symbols-outlined text-[32px]">rocket_launch</span>
+            <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
+                <div className="bg-primary p-2 rounded text-white shadow-sm">
+                    <span className="material-symbols-outlined text-2xl">school</span>
                 </div>
-                <span className="text-2xl font-black tracking-tight text-primary">EduPrácticas</span>
+                <span className="text-xl font-bold tracking-tight text-gray-800 dark:text-white uppercase">EduConect</span>
             </div>
 
-            <div className="w-full max-w-lg bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-3xl p-8 shadow-2xl shadow-primary/5 backdrop-blur-sm">
+            <div className="w-full max-w-lg bg-white dark:bg-gray-800 border border-[#e0e0e0] dark:border-white/10 rounded p-8 shadow-sm">
 
                 {error && (
                     <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-3 animate-in fade-in duration-300">
@@ -176,40 +176,40 @@ const Registro: React.FC = () => {
                 )}
 
                 {!role ? (
-                    <div className="animate-in fade-in zoom-in duration-300">
+                    <div>
                         <div className="mb-8 text-center">
-                            <h2 className="text-3xl font-black tracking-tight mb-2">Selecciona tu rol</h2>
-                            <p className="text-[#616f89] dark:text-slate-400">¿Cómo vas a usar EduPrácticas Connect?</p>
+                            <h2 className="text-2xl font-bold tracking-tight mb-2 dark:text-white">Selecciona tu perfil</h2>
+                            <p className="text-gray-500 text-sm">¿Cómo vas a utilizar la plataforma?</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {roles.map((r) => (
                                 <button
                                     key={r.id}
                                     onClick={() => setRole(r.id as Role)}
-                                    className="flex flex-col items-center justify-center gap-4 p-6 bg-background-light dark:bg-white/5 border-2 border-transparent hover:border-primary/50 hover:bg-white dark:hover:bg-white/10 rounded-2xl transition-all group"
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 dark:bg-white/5 border border-transparent hover:border-primary/50 hover:bg-white dark:hover:bg-white/10 rounded transition-none group text-gray-700 dark:text-gray-300"
                                 >
-                                    <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <span className="material-symbols-outlined text-3xl">{r.icon}</span>
+                                    <div className="w-12 h-12 bg-primary text-white rounded flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-2xl">{r.icon}</span>
                                     </div>
-                                    <span className="font-bold text-lg">{r.label}</span>
+                                    <span className="font-bold text-sm uppercase">{r.label}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
                 ) : (
-                    <div className="animate-in slide-in-from-right duration-500">
+                    <div>
                         <button
                             onClick={() => { setRole(null); setError(null); }}
-                            className="flex items-center gap-2 text-sm font-bold text-primary mb-6 hover:gap-3 transition-all"
+                            className="flex items-center gap-2 text-xs font-bold text-primary mb-6 hover:underline"
                         >
                             <span className="material-symbols-outlined text-sm">arrow_back</span>
-                            Cambiar rol
+                            Cambiar tipo de cuenta
                         </button>
 
                         <div className="mb-8">
-                            <h2 className="text-3xl font-black tracking-tight mb-2">Registro</h2>
-                            <p className="text-[#616f89] dark:text-slate-400">
-                                Completando registro como <span className="text-primary font-bold uppercase">{role.replace('_', ' ')}</span>
+                            <h2 className="text-2xl font-bold tracking-tight mb-2 dark:text-white uppercase">Registro</h2>
+                            <p className="text-gray-500 text-sm">
+                                Creando cuenta como <span className="text-primary font-bold">{role.replace('_', ' ').toUpperCase()}</span>
                             </p>
                         </div>
 
@@ -223,7 +223,7 @@ const Registro: React.FC = () => {
                                         required
                                         value={nombre}
                                         onChange={(e) => setNombre(e.target.value)}
-                                        className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-primary transition-none font-medium text-sm"
                                         placeholder="Nombre y Apellidos"
                                     />
                                 </div>
@@ -238,7 +238,7 @@ const Registro: React.FC = () => {
                                         required
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-primary transition-none font-medium text-sm"
                                         placeholder="ejemplo@correo.com"
                                     />
                                 </div>
@@ -253,7 +253,7 @@ const Registro: React.FC = () => {
                                         required
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-primary transition-none font-medium text-sm"
                                         placeholder="••••••••"
                                     />
                                 </div>
@@ -387,17 +387,17 @@ const Registro: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-wait"
+                                className="w-full bg-primary text-white font-bold py-3.5 rounded shadow hover:bg-primary/90 active:scale-95 transition-none flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
                             >
                                 {loading ? (
                                     <>
                                         <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                                        <span>Registrando...</span>
+                                        <span>Procesando...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Crear cuenta</span>
-                                        <span className="material-symbols-outlined">arrow_forward</span>
+                                        <span>Confirmar registro</span>
+                                        <span className="material-symbols-outlined">check</span>
                                     </>
                                 )}
                             </button>

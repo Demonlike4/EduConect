@@ -1,0 +1,515 @@
+﻿diff --git a/backend b/backend
+--- a/backend
++++ b/backend
+@@ -1 +1 @@
+-Subproject commit acd493eb78d07b22ad029f2418e81484e1757af1
++Subproject commit acd493eb78d07b22ad029f2418e81484e1757af1-dirty
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index f2af740..4953847 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -1,4 +1,6 @@
+ import { UserProvider } from './context/UserContext';
++import { ThemeProvider } from './context/ThemeContext';
++import ThemeToggle from './components/ThemeToggle';
+ import AlumnoDashboard from './pages/AlumnoDashboard';
+ import EmpresaDashboard from './pages/EmpresaDashboard';
+ import TutorCentroDashboard from './pages/TutorCentroDashboard';
+@@ -8,26 +10,35 @@ import PerfilAlumno from './pages/PerfilAlumno';
+ import Registro from './pages/Registro';
+ import Home from './pages/Home';
+ import Login from './pages/Login';
++import Privacidad from './pages/Privacidad';
++import Terminos from './pages/Terminos';
++import Cookies from './pages/Cookies';
+ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+ 
+ function App() {
+     return (
+-        <UserProvider>
+-            <Router>
+-                <Routes>
+-                    <Route path="/" element={<Home />} />
+-                    <Route path="/login" element={<Login />} />
+-                    <Route path="/registro" element={<Registro />} />
+-                    <Route path="/dashboard/alumno" element={<AlumnoDashboard />} />
+-                    <Route path="/dashboard/tutor-centro" element={<TutorCentroDashboard />} />
+-                    <Route path="/dashboard/tutor-centro/alumnos" element={<TutorAlumnos />} />
+-                    <Route path="/perfil/alumno" element={<PerfilAlumno />} />
+-                    <Route path="/dashboard/empresa" element={<EmpresaDashboard />} />
+-                    <Route path="/dashboard/tutor-empresa" element={<TutorEmpresaDashboard />} />
+-                    <Route path="*" element={<div>404 - Not Found</div>} />
+-                </Routes>
+-            </Router>
+-        </UserProvider>
++        <ThemeProvider>
++            <UserProvider>
++                <Router>
++                    <ThemeToggle />
++                    <Routes>
++                        <Route path="/" element={<Home />} />
++                        <Route path="/login" element={<Login />} />
++                        <Route path="/registro" element={<Registro />} />
++                        <Route path="/dashboard/alumno" element={<AlumnoDashboard />} />
++                        <Route path="/dashboard/tutor-centro" element={<TutorCentroDashboard />} />
++                        <Route path="/dashboard/tutor-centro/alumnos" element={<TutorAlumnos />} />
++                        <Route path="/perfil/alumno" element={<PerfilAlumno />} />
++                        <Route path="/dashboard/empresa" element={<EmpresaDashboard />} />
++                        <Route path="/dashboard/tutor-empresa" element={<TutorEmpresaDashboard />} />
++                        <Route path="/privacidad" element={<Privacidad />} />
++                        <Route path="/terminos" element={<Terminos />} />
++                        <Route path="/cookies" element={<Cookies />} />
++                        <Route path="*" element={<div>404 - Not Found</div>} />
++                    </Routes>
++                </Router>
++            </UserProvider>
++        </ThemeProvider>
+     );
+ }
+ 
+diff --git a/frontend/src/context/UserContext.tsx b/frontend/src/context/UserContext.tsx
+index 28d766b..e84eebf 100644
+--- a/frontend/src/context/UserContext.tsx
++++ b/frontend/src/context/UserContext.tsx
+@@ -7,6 +7,7 @@ interface User {
+     email: string;
+     nombre: string;
+     role: UserRole;
++    isAprobado?: boolean;
+     centro?: string;
+     grado?: string;
+     empresa?: string;
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+index ae854e6..b564d35 100644
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -1,7 +1,10 @@
+ @import "tailwindcss";
+ 
++@custom-variant dark (&:where(.dark, .dark *));
++
+ @theme {
+-    --color-primary: #1152d4;
++    --color-primary: #008a3f;
++    --color-primary-dark: #006b31;
+     --color-background-light: #f6f6f8;
+     --color-background-dark: #101622;
+ 
+diff --git a/frontend/src/pages/AlumnoDashboard.tsx b/frontend/src/pages/AlumnoDashboard.tsx
+index fc722b9..ef9fd62 100644
+--- a/frontend/src/pages/AlumnoDashboard.tsx
++++ b/frontend/src/pages/AlumnoDashboard.tsx
+@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
+ import axios from 'axios';
+ import { useUser } from '../context/UserContext';
+ import ChatSystem from '../components/ChatSystem';
++import NotificationPanel from '../components/NotificationPanel';
+ 
+ interface DashboardData {
+     nombre: string;
+@@ -192,21 +193,21 @@ const AlumnoDashboard: React.FC = () => {
+             {/* Sidebar Navigation */}
+             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col shrink-0 transition-colors duration-300">
+                 <div className="p-6 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+-                    <div className="size-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+-                        <span className="material-symbols-outlined text-2xl font-bold">school</span>
++                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
++                        <span className="material-symbols-outlined text-2xl font-bold">account_balance</span>
+                     </div>
+                     <div>
+-                        <h1 className="text-lg font-bold leading-tight dark:text-white">EduPr├ícticas</h1>
+-                        <p className="text-xs text-[#616f89] dark:text-slate-400 font-medium uppercase tracking-wider">Connect</p>
++                        <h1 className="text-lg font-black leading-tight text-primary">S├ëNECA</h1>
++                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portal Alumnado</p>
+                     </div>
+                 </div>
+ 
+                 <nav className="flex-1 px-3 py-4 space-y-1">
+                     {[
+                         { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '#' },
+-                        { id: 'search', label: 'Buscar Ofertas', icon: 'search', path: '#' },
+-                        { id: 'diario', label: 'Diario de Pr├ícticas', icon: 'auto_stories', path: '#', show: dashboardData?.estado_practicas === 'VALIDADO' },
+-                        { id: 'messages', label: 'Mensajes', icon: 'forum', path: '#' },
++                        { id: 'search', label: 'Buscar Ofertas', icon: 'search', path: '#', show: user?.isAprobado },
++                        { id: 'diario', label: 'Diario de Pr├ícticas', icon: 'auto_stories', path: '#', show: user?.isAprobado && dashboardData?.estado_practicas === 'VALIDADO' },
++                        { id: 'messages', label: 'Mensajes', icon: 'forum', path: '#', show: user?.isAprobado },
+                         { id: 'profile', label: 'Mi Perfil', icon: 'person', path: '/perfil/alumno' },
+                     ].filter(i => i.show !== false).map((item) => (
+                         <button
+@@ -247,18 +248,18 @@ const AlumnoDashboard: React.FC = () => {
+             {/* Main Content Wrapper */}
+             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                 {/* Top Bar */}
+-                <header className="h-16 bg-white dark:bg-slate-900 border-b border-[#dbdfe6] dark:border-slate-800 flex items-center justify-between px-8 shrink-0 transition-colors duration-300">
+-                    <h2 className="text-xl font-bold dark:text-white capitalize">
++                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md shrink-0 z-10">
++                    <h2 className="text-xl font-black capitalize">
+                         {activeTab === 'search' ? 'Ofertas Disponibles' :
+                             activeTab === 'diario' ? 'Diario de Pr├ícticas' : 'Mi Dashboard'}
+                     </h2>
+                     <div className="flex items-center gap-4">
+                         <div className="flex items-center gap-3 cursor-pointer group">
+                             <div className="text-right hidden sm:block">
+-                                <p className="text-sm font-bold leading-none dark:text-white group-hover:text-primary transition-colors">{displayName}</p>
+-                                <p className="text-[10px] text-[#616f89] dark:text-slate-400 mt-1 uppercase font-bold tracking-tighter">{displayGrade}</p>
++                                <p className="text-sm font-bold leading-none text-white group-hover:text-white/80 transition-colors">{displayName}</p>
++                                <p className="text-[10px] text-white/70 mt-1 uppercase font-bold tracking-tighter">{displayGrade}</p>
+                             </div>
+-                            <div className="size-10 rounded-full border-2 border-white dark:border-slate-800 shadow-sm overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold">
++                            <div className="size-10 rounded-full border-2 border-white shadow-sm overflow-hidden bg-white text-primary flex items-center justify-center font-bold">
+                                 {displayName.split(' ').map((n: string) => n[0]).join('')}
+                             </div>
+                         </div>
+@@ -269,6 +270,34 @@ const AlumnoDashboard: React.FC = () => {
+                 <main className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                     {/* DASHBOARD TAB */}
+                     {activeTab === 'dashboard' && (
++                        !user?.isAprobado ? (
++                            <div className="flex flex-col items-center justify-center p-12 text-center mt-10 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in zoom-in duration-500">
++                                <span className="material-symbols-outlined text-7xl text-amber-500 mb-6 drop-shadow-lg">lock_clock</span>
++                                <h2 className="text-3xl font-black mb-4 text-slate-800 dark:text-white">Acceso Limitado</h2>
++                                <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-10 text-lg leading-relaxed">
++                                    Tu cuenta no tiene un tutor de centro asignado o ha sido revocada. Para poder usar EduPr├ícticas Connect necesitas tener un tutor que apruebe tu usuario.<br/><br/>
++                                    Si has sido eliminado por error o ya no quieres formar parte del sistema, puedes borrar tu cuenta permanentemente.
++                                </p>
++                                <button
++                                    onClick={async () => {
++                                        if (confirm("┬┐Est├ís completamente seguro de querer borrar tu cuenta? Esta acci├│n es irreversible y eliminar├í todos tus datos.")) {
++                                            try {
++                                                await axios.post('http://localhost:8000/api/alumno/account/delete', { email: user?.email });
++                                                alert("Cuenta eliminada con ├®xito.");
++                                                logout();
++                                                navigate('/');
++                                            } catch (e) {
++                                                alert("Error al intentar borrar la cuenta.");
++                                            }
++                                        }
++                                    }}
++                                    className="bg-red-50 text-red-600 border border-red-100 dark:border-red-500/20 dark:bg-red-500/10 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white px-8 py-4 rounded-xl font-black transition-all flex items-center gap-3 shadow-lg shadow-red-500/10 hover:shadow-red-500/30 hover:scale-105 active:scale-95 group"
++                                >
++                                    <span className="material-symbols-outlined group-hover:animate-bounce">delete_forever</span>
++                                    Borrar mi cuenta permanentemente
++                                </button>
++                            </div>
++                        ) : (
+                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
+                             <div className="lg:col-span-2 space-y-6">
+                                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 p-6 shadow-sm overflow-hidden relative">
+@@ -375,8 +404,9 @@ const AlumnoDashboard: React.FC = () => {
+                                         </div>
+                                     )}
+                                 </div>
++                                </div>
+                             </div>
+-                        </div>
++                        )
+                     )}
+ 
+                     {/* DIARIO TAB */}
+diff --git a/frontend/src/pages/EmpresaDashboard.tsx b/frontend/src/pages/EmpresaDashboard.tsx
+index 3cbd461..9565a8f 100644
+--- a/frontend/src/pages/EmpresaDashboard.tsx
++++ b/frontend/src/pages/EmpresaDashboard.tsx
+@@ -1,6 +1,7 @@
+ import React, { useState, useEffect, useMemo } from 'react';
+ import { useNavigate } from 'react-router-dom';
+ import axios from 'axios';
++import NotificationPanel from '../components/NotificationPanel';
+ import { useUser } from '../context/UserContext';
+ 
+ 
+@@ -260,17 +261,19 @@ const EmpresaDashboard: React.FC = () => {
+     const activeTutors = useMemo(() => tutores.filter(t => t.isAprobado), [tutores]);
+     const activeOffers = useMemo(() => ofertas.filter(o => o.estado === 'Activa'), [ofertas]);
+ 
++    if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950"><span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span></div>;
++
+     return (
+         <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-display">
+             {/* Sidebar */}
+             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
+                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+-                    <div className="size-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+-                        <span className="material-symbols-outlined">business</span>
++                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
++                        <span className="material-symbols-outlined">account_balance</span>
+                     </div>
+                     <div>
+-                        <h1 className="text-sm font-bold dark:text-white">EduConect</h1>
+-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Business Hub</p>
++                        <h1 className="text-sm font-black text-primary">S├ëNECA</h1>
++                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Empresa Colaboradora</p>
+                     </div>
+                 </div>
+ 
+@@ -307,18 +310,18 @@ const EmpresaDashboard: React.FC = () => {
+ 
+             {/* Main Content */}
+             <main className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-background-dark">
+-                <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 sticky top-0 z-10 flex items-center justify-between transition-colors duration-300">
++                <header className="bg-primary text-white border-b border-primary-dark px-8 py-4 sticky top-0 z-10 flex items-center justify-between shadow-md">
+                     <div>
+-                        <h2 className="text-xl font-bold dark:text-white capitalize">{activeTab.replace('_', ' ')}</h2>
+-                        <p className="text-sm text-slate-500 dark:text-slate-400">Gestiona tus procesos de selecci├│n actuales</p>
++                        <h2 className="text-xl font-black capitalize">{activeTab.replace('_', ' ')}</h2>
++                        <p className="text-sm text-white/80">Gestiona tus procesos de selecci├│n actuales</p>
+                     </div>
+                     <div className="flex items-center gap-4">
+-                        <div className="flex items-center gap-3">
++                        <div className="flex items-center gap-3 group cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-2xl transition-all border border-white/10 shadow-sm">
+                             <div className="text-right hidden sm:block">
+-                                <p className="text-xs font-bold dark:text-white">{empresaName}</p>
+-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">Plan Premium</p>
++                                <p className="text-sm font-bold text-white leading-tight group-hover:text-white/90 transition-colors tracking-wide">{empresaName}</p>
++                                <p className="text-[10px] text-emerald-300 font-black tracking-widest uppercase mt-0.5">Empresa Colaboradora</p>
+                             </div>
+-                            <div className="size-9 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-primary font-bold">
++                            <div className="size-10 rounded-xl bg-linear-to-br from-white to-slate-100 flex items-center justify-center text-primary font-black shadow-inner shadow-primary/20 group-hover:scale-105 group-hover:-rotate-3 transition-transform border-2 border-white/20">
+                                 {empresaName.substring(0, 2).toUpperCase()}
+                             </div>
+                         </div>
+@@ -395,6 +398,7 @@ const EmpresaDashboard: React.FC = () => {
+                             </div>
+ 
+                             <div className="space-y-8">
++                                <NotificationPanel role="EMPRESA" />
+                                 <section className="bg-linear-to-br from-primary to-blue-600 p-6 rounded-3xl text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
+                                     <div className="relative z-10">
+                                         <h4 className="text-lg font-bold mb-2">Potencia tu Talento ­ƒÜÇ</h4>
+diff --git a/frontend/src/pages/Home.tsx b/frontend/src/pages/Home.tsx
+index eb2f826..0175bd8 100644
+--- a/frontend/src/pages/Home.tsx
++++ b/frontend/src/pages/Home.tsx
+@@ -1,5 +1,5 @@
+ import React, { useState } from 'react';
+-import { useNavigate } from 'react-router-dom';
++import { useNavigate, Link } from 'react-router-dom';
+ import { useUser, type UserRole } from '../context/UserContext';
+ 
+ const Home: React.FC = () => {
+@@ -416,9 +416,9 @@ const Home: React.FC = () => {
+                         <div>
+                             <h4 className="font-bold mb-6">Legal</h4>
+                             <ul className="flex flex-col gap-4 text-sm text-[#616f89] dark:text-slate-400">
+-                                <li><a className="hover:text-primary" href="#">Privacidad</a></li>
+-                                <li><a className="hover:text-primary" href="#">T├®rminos de servicio</a></li>
+-                                <li><a className="hover:text-primary" href="#">Cookies</a></li>
++                                <li><Link className="hover:text-primary" to="/privacidad">Privacidad</Link></li>
++                                <li><Link className="hover:text-primary" to="/terminos">T├®rminos de servicio</Link></li>
++                                <li><Link className="hover:text-primary" to="/cookies">Cookies</Link></li>
+                             </ul>
+                         </div>
+                     </div>
+diff --git a/frontend/src/pages/PerfilAlumno.tsx b/frontend/src/pages/PerfilAlumno.tsx
+index e804eec..2830c5e 100644
+--- a/frontend/src/pages/PerfilAlumno.tsx
++++ b/frontend/src/pages/PerfilAlumno.tsx
+@@ -100,12 +100,12 @@ const PerfilAlumno: React.FC = () => {
+             {/* Sidebar Navigation */}
+             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col shrink-0 transition-colors duration-300">
+                 <div className="p-6 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+-                    <div className="size-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+-                        <span className="material-symbols-outlined text-2xl font-bold">school</span>
++                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
++                        <span className="material-symbols-outlined text-2xl font-bold">account_balance</span>
+                     </div>
+                     <div>
+-                        <h1 className="text-lg font-bold leading-tight dark:text-white">EduPr├ícticas</h1>
+-                        <p className="text-xs text-[#616f89] dark:text-slate-400 font-medium uppercase tracking-wider">Connect</p>
++                        <h1 className="text-lg font-black leading-tight text-primary">S├ëNECA</h1>
++                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portal Alumnado</p>
+                     </div>
+                 </div>
+ 
+@@ -130,11 +130,11 @@ const PerfilAlumno: React.FC = () => {
+ 
+             {/* Main Content Area */}
+             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+-                <header className="h-16 bg-white dark:bg-slate-900 border-b border-[#dbdfe6] dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
+-                    <h2 className="text-xl font-bold dark:text-white">Configuraci├│n del Perfil</h2>
++                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md shrink-0 z-10 transition-colors duration-300">
++                    <h2 className="text-xl font-black text-white">Configuraci├│n del Perfil</h2>
+                     <button
+                         onClick={handleSave}
+-                        className="bg-primary text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
++                        className="bg-white text-primary px-6 py-2 rounded-sm text-sm font-bold hover:bg-slate-50 transition-all shadow-sm"
+                     >
+                         Guardar Cambios
+                     </button>
+diff --git a/frontend/src/pages/Registro.tsx b/frontend/src/pages/Registro.tsx
+index fdb09c6..91ec78c 100644
+--- a/frontend/src/pages/Registro.tsx
++++ b/frontend/src/pages/Registro.tsx
+@@ -105,6 +105,14 @@ const Registro: React.FC = () => {
+         setLoading(true);
+         setError(null);
+ 
++        // Validar formato base de email en el cliente
++        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++        if (!emailRegex.test(email)) {
++            setError("Por favor, introduce un correo electr├│nico v├ílido.");
++            setLoading(false);
++            return;
++        }
++
+         try {
+             const data = {
+                 nombre,
+diff --git a/frontend/src/pages/TutorAlumnos.tsx b/frontend/src/pages/TutorAlumnos.tsx
+index 51aa03b..fba3150 100644
+--- a/frontend/src/pages/TutorAlumnos.tsx
++++ b/frontend/src/pages/TutorAlumnos.tsx
+@@ -55,12 +55,12 @@ const TutorAlumnos: React.FC = () => {
+             {/* Sidebar */}
+             <aside className="w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
+                 <div className="p-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 cursor-pointer" onClick={() => navigate('/')}>
+-                    <div className="size-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+-                        <span className="material-symbols-outlined text-2xl">school</span>
++                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
++                        <span className="material-symbols-outlined text-2xl">account_balance</span>
+                     </div>
+                     <div>
+-                        <h1 className="text-sm font-bold leading-tight dark:text-white">EduPr├ícticas</h1>
+-                        <p className="text-xs text-slate-500 dark:text-slate-400">Connect Panel</p>
++                        <h1 className="text-sm font-black text-primary">S├ëNECA</h1>
++                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Junta de Andaluc├¡a</p>
+                     </div>
+                 </div>
+ 
+@@ -105,20 +105,20 @@ const TutorAlumnos: React.FC = () => {
+             {/* Main Content Area */}
+             <main className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-[#0B111A]">
+                 {/* Header */}
+-                <header className="h-16 bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 transition-colors duration-300">
+-                    <h2 className="text-lg font-bold dark:text-white">Alumnos - {user?.centro || 'Centro Educativo'}</h2>
++                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md z-10 transition-colors duration-300">
++                    <h2 className="text-lg font-black text-white">Alumnos - {user?.centro || 'Centro Educativo'}</h2>
+                     <div className="flex items-center gap-4">
+                         <div className="relative group">
+-                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
++                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/70">search</span>
+                             <input
+-                                className="pl-10 pr-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0B111A] text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent w-64 outline-none transition-all placeholder:text-slate-400"
++                                className="pl-10 pr-4 py-1.5 rounded-sm border border-transparent bg-white/10 text-sm text-white focus:ring-2 focus:ring-white focus:border-transparent w-full md:w-64 outline-none transition-all placeholder:text-white/70"
+                                 placeholder="Buscar alumnos..."
+                                 type="text"
+                             />
+                         </div>
+-                        <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors">
++                        <button className="p-2 text-white/90 hover:bg-white/10 rounded-sm relative transition-colors">
+                             <span className="material-symbols-outlined">notifications</span>
+-                            <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark"></span>
++                            <span className="absolute top-2 right-2 size-2 bg-amber-500 rounded-full border-2 border-primary"></span>
+                         </button>
+                     </div>
+                 </header>
+diff --git a/frontend/src/pages/TutorCentroDashboard.tsx b/frontend/src/pages/TutorCentroDashboard.tsx
+index 37123c8..a42ba16 100644
+--- a/frontend/src/pages/TutorCentroDashboard.tsx
++++ b/frontend/src/pages/TutorCentroDashboard.tsx
+@@ -134,6 +134,20 @@ const TutorCentroDashboard: React.FC = () => {
+         }
+     };
+ 
++    const handleRemoveAlumno = async (id: number, nombre: string) => {
++        if (!confirm(`┬┐Est├ís seguro de que deseas eliminar al alumno ${nombre} de tu lista? Perder├í el acceso y tendr├í que solicitar nuevo tutor.`)) return;
++
++        try {
++            const res = await axios.post(`http://localhost:8000/api/tutor/alumno/${id}/remove`);
++            if (res.data.status === 'success') {
++                setAlumnos(prev => prev.filter(a => a.id !== id));
++            }
++        } catch (error) {
++            console.error('Error al eliminar alumno', error);
++            alert('Error al intentar eliminar a este alumno.');
++        }
++    };
++
+     const handleOpenValModal = (al: AlumnoData) => {
+         setAlumnoToVal(al);
+         setValStep(1);
+@@ -449,6 +463,14 @@ const TutorCentroDashboard: React.FC = () => {
+                                                             </td>
+                                                             <td className="px-6 py-4">
+                                                                 <div className="flex justify-end items-center gap-2">
++                                                                    <button
++                                                                        onClick={() => handleRemoveAlumno(row.id, row.nombre)}
++                                                                        className="flex items-center justify-center p-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white transition-all group"
++                                                                        title="Eliminar Alumno"
++                                                                    >
++                                                                        <span className="material-symbols-outlined text-[20px]">person_remove</span>
++                                                                    </button>
++
+                                                                     <button
+                                                                         onClick={() => handleOpenDetailModal(row.id)}
+                                                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-primary hover:text-white dark:hover:bg-primary transition-all group"
+diff --git a/frontend/src/pages/TutorEmpresaDashboard.tsx b/frontend/src/pages/TutorEmpresaDashboard.tsx
+index 224ab28..5df4105 100644
+--- a/frontend/src/pages/TutorEmpresaDashboard.tsx
++++ b/frontend/src/pages/TutorEmpresaDashboard.tsx
+@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
+ import { useNavigate } from 'react-router-dom';
+ import { useUser } from '../context/UserContext';
+ import ChatSystem from '../components/ChatSystem';
++import NotificationPanel from '../components/NotificationPanel';
+ import axios from 'axios';
+ import SignaturePad from '../components/SignaturePad';
+ 
+@@ -187,12 +188,12 @@ const TutorEmpresaDashboard: React.FC = () => {
+             {/* Sidebar Navigation */}
+             <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 relative z-20">
+                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
+-                    <div className="size-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+-                        <span className="material-symbols-outlined font-black">supervisor_account</span>
++                    <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
++                        <span className="material-symbols-outlined font-black">account_balance</span>
+                     </div>
+                     <div>
+-                        <h1 className="text-sm font-black dark:text-white">EduConect</h1>
+-                        <p className="text-[10px] text-primary font-black uppercase tracking-wider">Tutor Empresa</p>
++                        <h1 className="text-sm font-black text-primary">S├ëNECA</h1>
++                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tutor Empresa</p>
+                     </div>
+                 </div>
+ 
+@@ -241,14 +242,14 @@ const TutorEmpresaDashboard: React.FC = () => {
+ 
+             {/* Main Content */}
+             <main className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-[#0B111A]">
+-                <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-5 sticky top-0 z-10 flex items-center justify-between transition-colors duration-300">
++                <header className="bg-primary border-b border-primary-dark text-white px-8 py-5 sticky top-0 z-10 flex items-center justify-between shadow-md">
+                     <div>
+-                        <h2 className="text-xl font-black dark:text-white">
++                        <h2 className="text-xl font-black text-white">
+                             {activeTab === 'resumen' && 'Panel de Tutor├¡a'}
+                             {activeTab === 'alumnos' && 'Gesti├│n de Alumnos'}
+                             {activeTab === 'mensajes' && 'Centro de Mensajer├¡a'}
+                         </h2>
+-                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">
++                        <p className="text-sm text-white/80 font-medium tracking-tight">
+                             {activeTab === 'resumen' && 'Vista general del seguimiento de alumnos'}
+                             {activeTab === 'alumnos' && 'Tus alumnos asignados en la empresa'}
+                             {activeTab === 'mensajes' && 'Canales de comunicaci├│n directos'}
+@@ -258,8 +259,9 @@ const TutorEmpresaDashboard: React.FC = () => {
+ 
+                 <div className="p-8 h-full overflow-y-auto custom-scrollbar">
+                     {activeTab === 'resumen' && (
+-                        <div className="space-y-8 animate-in fade-in duration-500">
+-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
++                        <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in duration-500">
++                            <div className="flex-1 space-y-8">
++                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                 <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                                     <div className="flex justify-between items-start mb-4">
+                                         <span className="material-symbols-outlined text-primary bg-primary/10 p-3 rounded-2xl">person_check</span>
+@@ -315,6 +317,10 @@ const TutorEmpresaDashboard: React.FC = () => {
+                                     </div>
+                                 </div>
+                             </div>
++                            </div>
++                            <div className="w-full lg:w-96 shrink-0">
++                                <NotificationPanel role="TUTOR_EMPRESA" />
++                            </div>
+                         </div>
+                     )}
+ 
