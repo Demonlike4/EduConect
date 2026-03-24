@@ -1,0 +1,25 @@
+﻿php :  Updating database 
+schema...
+En línea: 1 Carácter: 1
++ php -d memory_limit=-1 
+bin/console 
+doctrine:schema:update 
+--force 2>& ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: ( Up  
+  dating database schema   
+ ...:String) [], Remote    
+Exception
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+
+     6 queries were 
+executed
+
+ [OK] Database schema      
+      updated successfully!
+

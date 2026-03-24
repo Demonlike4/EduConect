@@ -1,0 +1,47 @@
+﻿ M .env
+ M composer.json
+ M composer.lock
+ M config/bundles.php
+ M config/packages/security.yaml
+ M config/reference.php
+ M config/services.yaml
+ M symfony.lock
+?? bstatus.txt
+?? clean_output.txt
+?? config/packages/nelmio_cors.yaml
+?? public/debug_data.php
+?? public/debug_tutor.php
+?? public/router.php
+?? public/uploads/
+?? src/Command/
+?? src/Controller/Api/
+?? src/Controller/DocumentoController.php
+?? src/DataFixtures/
+?? src/Entity/Alumno.php
+?? src/Entity/Candidatura.php
+?? src/Entity/Centro.php
+?? src/Entity/Chat.php
+?? src/Entity/ChatMessage.php
+?? src/Entity/DiarioActividad.php
+?? src/Entity/Empresa.php
+?? src/Entity/Grado.php
+?? src/Entity/Notificacion.php
+?? src/Entity/Oferta.php
+?? src/Entity/User.php
+?? src/Repository/AlumnoRepository.php
+?? src/Repository/CandidaturaRepository.php
+?? src/Repository/CentroRepository.php
+?? src/Repository/ChatMessageRepository.php
+?? src/Repository/ChatRepository.php
+?? src/Repository/DiarioActividadRepository.php
+?? src/Repository/EmpresaRepository.php
+?? src/Repository/GradoRepository.php
+?? src/Repository/NotificacionRepository.php
+?? src/Repository/OfertaRepository.php
+?? src/Repository/UserRepository.php
+?? src/Security/
+?? src/Service/
+?? templates/documento/
+?? users.txt
+?? users_debug.txt
+?? users_list.txt

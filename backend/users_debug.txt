@@ -1,0 +1,14 @@
+ ---- ---------------------------- ------------------------------ ----------------------------------------------------- 
+  ID   Email                        Roles                          Centro                                               
+ ---- ---------------------------- ------------------------------ ----------------------------------------------------- 
+  21   alumno1@gmail.com            ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  22   tutorCentro1@gmail.com       ROLE_TUTOR_CENTRO, ROLE_USER   IES Politécnico Hermenegildo Lanz                    
+  23   alumno2@gmail.com            ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  24   alumno3@gmail.com            ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  25   alumno4@gmail.com            ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  26   javier.martinez@alumno.edu   ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  27   lucia.fernandez@alumno.edu   ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  28   pedro.sanchez@alumno.edu     ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+  29   marta.lopez@alumno.edu       ROLE_ALUMNO, ROLE_USER         --- (Alumno via: IES Politécnico Hermenegildo Lanz)  
+ ---- ---------------------------- ------------------------------ ----------------------------------------------------- 
+
