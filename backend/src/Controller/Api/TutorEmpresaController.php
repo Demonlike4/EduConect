@@ -41,6 +41,7 @@ class TutorEmpresaController extends AbstractController
                 'id' => $alumno->getId(),
                 'nombre' => $userAlumno->getNombre() ?? 'Sin nombre',
                 'email' => $userAlumno->getEmail(),
+                'foto' => $alumno->getFoto(),
                 'grado' => $alumno->getGrado() ? $alumno->getGrado()->getNombre() : 'Sin grado',
                 'centro' => $alumno->getCentro() ? $alumno->getCentro()->getNombre() : 'Sin centro',
                 'candidatura' => [

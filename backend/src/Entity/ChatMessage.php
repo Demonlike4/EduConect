@@ -28,9 +28,34 @@ class ChatMessage
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $fechaEnvio = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $leidoPor = [];
+
     public function __construct()
     {
         $this->fechaEnvio = new \DateTime();
+        $this->leidoPor = [];
+    }
+
+    public function getLeidoPor(): array
+    {
+        return $this->leidoPor ?? [];
+    }
+
+    public function setLeidoPor(array $leidoPor): static
+    {
+        $this->leidoPor = $leidoPor;
+        return $this;
+    }
+
+    public function addLector(int $userId): static
+    {
+        $current = $this->getLeidoPor();
+        if (!in_array($userId, $current)) {
+            $current[] = $userId;
+            $this->leidoPor = $current;
+        }
+        return $this;
     }
 
     public function getId(): ?int

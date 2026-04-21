@@ -64,6 +64,7 @@ class TutorController extends AbstractController
                     'empresa' => $activeCandidatura && $activeCandidatura->getOferta() ? $activeCandidatura->getOferta()->getEmpresa()->getNombreComercial() : 'Sin asignar',
                     'horario' => $activeCandidatura ? $activeCandidatura->getHorario() : null,
                     'tipoDuracion' => $activeCandidatura ? $activeCandidatura->getTipoDuracion() : null,
+                    'foto' => $alumno->getFoto(),
                 ];
             }
         }
@@ -92,8 +93,10 @@ class TutorController extends AbstractController
 
                     $empE = $em->getRepository(\App\Entity\Empresa::class)->findOneBy(['nombreComercial' => $al['empresa']]);
                     if ($empE) {
+                        $empresasColaboradoras[$al['empresa']]['id'] = $empE->getId();
                         $empresasColaboradoras[$al['empresa']]['cif'] = $empE->getCif();
                         $empresasColaboradoras[$al['empresa']]['email'] = $empE->getUser()->getEmail();
+                        $empresasColaboradoras[$al['empresa']]['logo'] = $empE->getLogo();
                     }
                 }
                 $empresasColaboradoras[$al['empresa']]['alumnosCount']++;
@@ -267,6 +270,7 @@ class TutorController extends AbstractController
             'cvPdf' => $alumno->getCvPdf(),
             'grado' => $alumno->getGrado() ? $alumno->getGrado()->getNombre() : 'Sin grado',
             'centro' => $alumno->getCentro() ? $alumno->getCentro()->getNombre() : 'Sin centro',
+            'foto' => $alumno->getFoto(),
             'candidatura' => $activeCandidatura ? [
                 'id' => $activeCandidatura->getId(),
                 'estado' => $activeCandidatura->getEstado(),

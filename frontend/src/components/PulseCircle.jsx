@@ -8,7 +8,7 @@ const PulseCircle = ({ candidaturaId, color = '#2c3e50' }) => {
 
     useEffect(() => {
         // LLamada a la API real
-        // axios.get(`http://localhost:8000/api/calendario/progreso/${candidaturaId}`)
+        // axios.get(`https://educonect.alwaysdata.net/api/calendario/progreso/${candidaturaId}`)
         //   .then(response => {
         //      setProgreso(response.data.porcentaje);
         //   });

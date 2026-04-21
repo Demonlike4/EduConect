@@ -45,11 +45,9 @@ class Candidatura
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $horario = null; // manana, tarde
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $firmaTutorCentro = null;
-
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $firmaTutorEmpresa = null;
+    #[ORM\OneToOne(targetEntity: CandidaturaFirma::class, cascade: ['persist', 'remove'], fetch: 'LAZY')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?CandidaturaFirma $firmas = null;
 
     #[ORM\OneToMany(mappedBy: 'candidatura', targetEntity: DiarioActividad::class, cascade: ['remove'])]
     private Collection $actividadesDiarias;
@@ -172,26 +170,44 @@ class Candidatura
         return $this;
     }
 
+    public function getFirmas(): ?CandidaturaFirma
+    {
+        return $this->firmas;
+    }
+
+    public function setFirmas(?CandidaturaFirma $firmas): static
+    {
+        $this->firmas = $firmas;
+
+        return $this;
+    }
+
     public function getFirmaTutorCentro(): ?string
     {
-        return $this->firmaTutorCentro;
+        return $this->firmas ? $this->firmas->getFirmaTutorCentro() : null;
     }
 
     public function setFirmaTutorCentro(?string $firmaTutorCentro): static
     {
-        $this->firmaTutorCentro = $firmaTutorCentro;
+        if (!$this->firmas) {
+            $this->firmas = new CandidaturaFirma();
+        }
+        $this->firmas->setFirmaTutorCentro($firmaTutorCentro);
 
         return $this;
     }
 
     public function getFirmaTutorEmpresa(): ?string
     {
-        return $this->firmaTutorEmpresa;
+        return $this->firmas ? $this->firmas->getFirmaTutorEmpresa() : null;
     }
 
     public function setFirmaTutorEmpresa(?string $firmaTutorEmpresa): static
     {
-        $this->firmaTutorEmpresa = $firmaTutorEmpresa;
+        if (!$this->firmas) {
+            $this->firmas = new CandidaturaFirma();
+        }
+        $this->firmas->setFirmaTutorEmpresa($firmaTutorEmpresa);
 
         return $this;
     }

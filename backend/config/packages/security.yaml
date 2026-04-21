@@ -11,6 +11,15 @@ security:
                 class: App\Entity\User
                 property: email
 
+    # -------------------------------------------------------------------------
+    # Jerarquía de roles: SUPERADMIN > ADMIN > (TUTOR_CENTRO, EMPRESA)
+    # SUPERADMIN hereda todos los permisos de ADMIN.
+    # ADMIN hereda los permisos de TUTOR_CENTRO y EMPRESA.
+    # -------------------------------------------------------------------------
+    role_hierarchy:
+        ROLE_SUPERADMIN: ROLE_ADMIN
+        ROLE_ADMIN:      [ROLE_TUTOR_CENTRO, ROLE_EMPRESA]
+
     firewalls:
         dev:
             # Ensure dev tools and static assets are always allowed

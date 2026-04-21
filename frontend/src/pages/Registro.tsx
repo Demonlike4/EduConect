@@ -50,7 +50,7 @@ const Registro: React.FC = () => {
     React.useEffect(() => {
         const fetchCentros = async () => {
             try {
-                const res = await axios.get('http://localhost:8000/api/public/centros');
+                const res = await axios.get('https://educonect.alwaysdata.net/api/public/centros');
                 setCentros(res.data);
             } catch (err) {
                 console.error("Error fetching centros", err);
@@ -58,7 +58,7 @@ const Registro: React.FC = () => {
         };
         const fetchEmpresas = async () => {
             try {
-                const res = await axios.get('http://localhost:8000/api/public/empresas');
+                const res = await axios.get('https://educonect.alwaysdata.net/api/public/empresas');
                 setEmpresas(res.data);
             } catch (err) {
                 console.error("Error fetching empresas", err);
@@ -84,10 +84,10 @@ const Registro: React.FC = () => {
 
         if (centroId) {
             try {
-                const res = await axios.get(`http://localhost:8000/api/public/centros/${centroId}/grados`);
+                const res = await axios.get(`https://educonect.alwaysdata.net/api/public/centros/${centroId}/grados`);
                 setGradosDisponibles(res.data);
 
-                const resTutores = await axios.get(`http://localhost:8000/api/public/centros/${centroId}/tutores`);
+                const resTutores = await axios.get(`https://educonect.alwaysdata.net/api/public/centros/${centroId}/tutores`);
                 setTutoresDisponibles(resTutores.data);
             } catch (err) {
                 console.error("Error fetching data", err);
@@ -128,7 +128,7 @@ const Registro: React.FC = () => {
             };
 
             // Asegúrate de que el backend Symfony esté corriendo en el puerto 8000
-            const response = await axios.post('http://localhost:8000/api/register', data);
+            const response = await axios.post('https://educonect.alwaysdata.net/api/register', data);
 
             if (response.status === 201) {
                 const newUser = response.data.user;
@@ -138,7 +138,17 @@ const Registro: React.FC = () => {
                     navigate('/');
                 } else {
                     // Show pending message if not approved
-                    alert('Registro completado. Tu cuenta está pendiente de aprobación por tu tutor o centro educativo.');
+                    let message = 'Registro completado. Tu cuenta está pendiente de aprobación.';
+                    if (role === 'alumno') {
+                        message = 'Registro completado. Tu cuenta está pendiente de aprobación por tu Tutor de Centro.';
+                    } else if (role === 'tutor_centro') {
+                        message = 'Registro completado. Tu cuenta está pendiente de aprobación por el Administrador del sistema.';
+                    } else if (role === 'tutor_empresa') {
+                        message = 'Registro completado. Tu cuenta está pendiente de aprobación por tu Empresa.';
+                    } else if (role === 'empresa') {
+                        message = 'Registro completado. La empresa ha sido registrada y está pendiente de aprobación por el Administrador.';
+                    }
+                    alert(message);
                     navigate('/login');
                 }
             }
@@ -160,7 +170,7 @@ const Registro: React.FC = () => {
         <div className="min-h-screen bg-gray-50 dark:bg-background-dark flex flex-col items-center justify-center p-6">
             {/* Logo Section */}
             <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
-                <div className="bg-primary p-2 rounded text-white shadow-sm">
+                <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 p-2 rounded text-white shadow-sm">
                     <span className="material-symbols-outlined text-2xl">school</span>
                 </div>
                 <span className="text-xl font-bold tracking-tight text-gray-800 dark:text-white uppercase">EduConect</span>
@@ -186,9 +196,9 @@ const Registro: React.FC = () => {
                                 <button
                                     key={r.id}
                                     onClick={() => setRole(r.id as Role)}
-                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 dark:bg-white/5 border border-transparent hover:border-primary/50 hover:bg-white dark:hover:bg-white/10 rounded transition-none group text-gray-700 dark:text-gray-300"
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 dark:bg-white/5 border border-transparent hover:border-indigo-600/50 hover:bg-white dark:hover:bg-white/10 rounded transition-none group text-gray-700 dark:text-gray-300"
                                 >
-                                    <div className="w-12 h-12 bg-primary text-white rounded flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white rounded flex items-center justify-center">
                                         <span className="material-symbols-outlined text-2xl">{r.icon}</span>
                                     </div>
                                     <span className="font-bold text-sm uppercase">{r.label}</span>
@@ -200,7 +210,7 @@ const Registro: React.FC = () => {
                     <div>
                         <button
                             onClick={() => { setRole(null); setError(null); }}
-                            className="flex items-center gap-2 text-xs font-bold text-primary mb-6 hover:underline"
+                            className="flex items-center gap-2 text-xs font-bold text-indigo-600 mb-6 hover:underline"
                         >
                             <span className="material-symbols-outlined text-sm">arrow_back</span>
                             Cambiar tipo de cuenta
@@ -209,7 +219,7 @@ const Registro: React.FC = () => {
                         <div className="mb-8">
                             <h2 className="text-2xl font-bold tracking-tight mb-2 dark:text-white uppercase">Registro</h2>
                             <p className="text-gray-500 text-sm">
-                                Creando cuenta como <span className="text-primary font-bold">{role.replace('_', ' ').toUpperCase()}</span>
+                                Creando cuenta como <span className="text-indigo-600 font-bold">{role.replace('_', ' ').toUpperCase()}</span>
                             </p>
                         </div>
 
@@ -217,13 +227,13 @@ const Registro: React.FC = () => {
                             <div className="space-y-1.5">
                                 <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Nombre Completo</label>
                                 <div className="relative group">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">person</span>
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">person</span>
                                     <input
                                         type="text"
                                         required
                                         value={nombre}
                                         onChange={(e) => setNombre(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-primary transition-none font-medium text-sm"
+                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-indigo-600 transition-none font-medium text-sm"
                                         placeholder="Nombre y Apellidos"
                                     />
                                 </div>
@@ -232,13 +242,13 @@ const Registro: React.FC = () => {
                             <div className="space-y-1.5">
                                 <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Email profesional</label>
                                 <div className="relative group">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">mail</span>
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">mail</span>
                                     <input
                                         type="email"
                                         required
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-primary transition-none font-medium text-sm"
+                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-indigo-600 transition-none font-medium text-sm"
                                         placeholder="ejemplo@correo.com"
                                     />
                                 </div>
@@ -247,13 +257,13 @@ const Registro: React.FC = () => {
                             <div className="space-y-1.5">
                                 <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Contraseña</label>
                                 <div className="relative group">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">lock</span>
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">lock</span>
                                     <input
                                         type="password"
                                         required
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-primary transition-none font-medium text-sm"
+                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-indigo-600 transition-none font-medium text-sm"
                                         placeholder="••••••••"
                                     />
                                 </div>
@@ -264,12 +274,12 @@ const Registro: React.FC = () => {
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Centro Educativo</label>
                                         <div className="relative group">
-                                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">school</span>
+                                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">school</span>
                                             <select
                                                 required
                                                 value={selectedCentro}
                                                 onChange={handleCentroChange}
-                                                className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer font-medium"
+                                                className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer font-medium"
                                             >
                                                 <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona un centro</option>
                                                 {centros.map(centro => (
@@ -287,13 +297,13 @@ const Registro: React.FC = () => {
                                             <div className="space-y-1.5 animate-in fade-in duration-300">
                                                 <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Grado formativo</label>
                                                 <div className="relative group">
-                                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">workspace_premium</span>
+                                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">workspace_premium</span>
                                                     <select
                                                         required
                                                         value={selectedGrado}
                                                         onChange={(e) => setSelectedGrado(e.target.value)}
                                                         disabled={!selectedCentro}
-                                                        className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                                        className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                                                     >
                                                         <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona un grado</option>
                                                         {gradosDisponibles.map(grado => (
@@ -309,13 +319,13 @@ const Registro: React.FC = () => {
                                             <div className="space-y-1.5 animate-in fade-in duration-300 mt-4">
                                                 <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Tutor de Centro</label>
                                                 <div className="relative group">
-                                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">person</span>
+                                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">person</span>
                                                     <select
                                                         required
                                                         value={selectedTutor}
                                                         onChange={(e) => setSelectedTutor(e.target.value)}
                                                         disabled={!selectedCentro}
-                                                        className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                                        className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                                                     >
                                                         <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona tu tutor</option>
                                                         {tutoresDisponibles.map(tutor => (
@@ -336,12 +346,12 @@ const Registro: React.FC = () => {
                                 <div className="space-y-1.5 animate-in fade-in duration-300">
                                     <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Selecciona tu Empresa</label>
                                     <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">corporate_fare</span>
+                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">corporate_fare</span>
                                         <select
                                             required
                                             value={selectedEmpresa}
                                             onChange={(e) => setSelectedEmpresa(e.target.value)}
-                                            className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer font-medium"
+                                            className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer font-medium"
                                         >
                                             <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona empresa</option>
                                             {empresas.map(emp => (
@@ -360,24 +370,24 @@ const Registro: React.FC = () => {
                                 <div className="space-y-1.5 animate-in fade-in duration-300">
                                     <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Nombre de la Empresa</label>
                                     <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">business</span>
+                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">business</span>
                                         <input
                                             type="text"
                                             required
                                             value={nombreEmpresa}
                                             onChange={(e) => setNombreEmpresa(e.target.value)}
-                                            className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                                            className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all font-medium"
                                             placeholder="Nombre fiscal o comercial"
                                         />
                                     </div>
                                     <div className="relative group mt-3">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-primary transition-colors">badge</span>
+                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">badge</span>
                                         <input
                                             type="text"
                                             required
                                             value={cif}
                                             onChange={(e) => setCif(e.target.value)}
-                                            className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                                            className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all font-medium"
                                             placeholder="CIF (ej: B12345678)"
                                         />
                                     </div>
@@ -387,7 +397,7 @@ const Registro: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-primary text-white font-bold py-3.5 rounded shadow hover:bg-primary/90 active:scale-95 transition-none flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                                className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white font-bold py-3.5 rounded shadow hover:bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/90 active:scale-95 transition-none flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
                             >
                                 {loading ? (
                                     <>
@@ -410,7 +420,7 @@ const Registro: React.FC = () => {
                         ¿Ya tienes cuenta?{' '}
                         <button
                             onClick={() => navigate('/login')}
-                            className="text-primary font-bold hover:underline"
+                            className="text-indigo-600 font-bold hover:underline"
                         >
                             Iniciar sesión
                         </button>

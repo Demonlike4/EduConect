@@ -113,7 +113,7 @@ class DiarioController extends AbstractController
         $tutorEmpresa = $activeCandidatura->getTutorEmpresa();
         $empresaGestor = $activeCandidatura->getOferta() ? $activeCandidatura->getOferta()->getEmpresa()->getUser() : null;
         
-        $receptor = $tutorEmpresa ? $tutorEmpresa->getUser() : $empresaGestor;
+        $receptor = $tutorEmpresa ?? $empresaGestor;
 
         if ($receptor) {
             $noti = new Notificacion();

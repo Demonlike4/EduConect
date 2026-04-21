@@ -8,6 +8,9 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     cv_uploads_directory: '%kernel.project_dir%/public/uploads/cv'
+    foto_uploads_directory: '%kernel.project_dir%/public/uploads/fotos'
+    logos_uploads_directory: '%kernel.project_dir%/public/uploads/logos'
+    oferta_images_directory: '%kernel.project_dir%/public/uploads/ofertas'
 
 services:
     # default configuration for services in *this* file

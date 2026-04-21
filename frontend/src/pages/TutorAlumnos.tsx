@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../context/UserContext';
+import { apiUrl } from '../lib/urls.ts';
+import DashboardLayout from '../components/layout/DashboardLayout';
 
 interface AlumnoData {
     id: number;
@@ -17,6 +19,7 @@ const TutorAlumnos: React.FC = () => {
     const { user, logout } = useUser();
     const [alumnos, setAlumnos] = useState<AlumnoData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Datos del usuario (con fallback)
     const displayName = user?.nombre || "Tutor Académico";
@@ -26,7 +29,7 @@ const TutorAlumnos: React.FC = () => {
         const fetchAlumnos = async () => {
             if (user?.email) {
                 try {
-                    const response = await axios.post('http://localhost:8000/api/tutor/alumnos', {
+                    const response = await axios.post(apiUrl('/api/tutor/alumnos'), {
                         email: user.email
                     });
                     if (response.data.alumnos) {
@@ -51,16 +54,21 @@ const TutorAlumnos: React.FC = () => {
     };
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
+        <DashboardLayout
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            sidebarWidthClass="w-72"
+            sidebarClassName="bg-white dark:bg-background-dark text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800"
+            mainClassName="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300"
+            sidebar={
+                <>
                 <div className="p-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 cursor-pointer" onClick={() => navigate('/')}>
                     <div className="size-10 bg-primary rounded-sm flex items-center justify-center text-white shadow-sm">
                         <span className="material-symbols-outlined text-2xl">account_balance</span>
                     </div>
                     <div>
                         <h1 className="text-sm font-black text-primary">SÉNECA</h1>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Junta de Andalucía</p>
+                        <p className="text-[10px] text-slate-500 font-semibold tracking-wide">Junta de Andalucía</p>
                     </div>
                 </div>
 
@@ -100,13 +108,16 @@ const TutorAlumnos: React.FC = () => {
                         </button>
                     </div>
                 </div>
-            </aside>
-
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-[#0B111A]">
-                {/* Header */}
-                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-8 shadow-md z-10 transition-colors duration-300">
+                </>
+            }
+            header={
+                <header className="h-16 bg-primary text-white border-b border-primary-dark flex items-center justify-between px-4 sm:px-8 shadow-md z-10 transition-colors duration-300 sticky top-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button className="lg:hidden p-2 -ml-2 text-white/90 hover:bg-white/10 rounded-sm" onClick={() => setIsSidebarOpen(true)}>
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
                     <h2 className="text-lg font-black text-white">Alumnos - {user?.centro || 'Centro Educativo'}</h2>
+                    </div>
                     <div className="flex items-center gap-4">
                         <div className="relative group">
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/70">search</span>
@@ -122,9 +133,9 @@ const TutorAlumnos: React.FC = () => {
                         </button>
                     </div>
                 </header>
-
-                {/* Scrollable content */}
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            }
+        >
+                <div className="p-4 sm:p-8 custom-scrollbar">
                     <div className="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom duration-500">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                             <h3 className="font-bold text-lg dark:text-white">Listado de Alumnos</h3>
@@ -193,8 +204,7 @@ const TutorAlumnos: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+        </DashboardLayout>
     );
 };
 

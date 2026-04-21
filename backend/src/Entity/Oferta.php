@@ -41,6 +41,15 @@ class Oferta
     #[ORM\JoinColumn(nullable: false)]
     private ?Empresa $empresa = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $color = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $imagen = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $horario = null;
+
     #[ORM\OneToMany(mappedBy: 'oferta', targetEntity: Candidatura::class)]
     private Collection $candidaturas;
 
@@ -171,6 +180,39 @@ class Oferta
             }
         }
 
+        return $this;
+    }
+
+    public function getColor(): ?string
+    {
+        return $this->color;
+    }
+
+    public function setColor(?string $color): static
+    {
+        $this->color = $color;
+        return $this;
+    }
+
+    public function getImagen(): ?string
+    {
+        return $this->imagen;
+    }
+
+    public function setImagen(?string $imagen): static
+    {
+        $this->imagen = $imagen;
+        return $this;
+    }
+
+    public function getHorario(): ?string
+    {
+        return $this->horario;
+    }
+
+    public function setHorario(?string $horario): static
+    {
+        $this->horario = $horario;
         return $this;
     }
 }

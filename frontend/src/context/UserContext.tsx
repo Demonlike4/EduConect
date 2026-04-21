@@ -11,6 +11,7 @@ interface User {
     centro?: string;
     grado?: string;
     empresa?: string;
+    foto?: string;
 }
 
 interface UserContextType {
@@ -27,7 +28,7 @@ export const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(() => {
-        const savedSession = localStorage.getItem(SESSION_KEY);
+        const savedSession = sessionStorage.getItem(SESSION_KEY);
         if (savedSession) {
             try {
                 const { user: savedUser, expiry } = JSON.parse(savedSession);
@@ -36,10 +37,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                     return savedUser;
                 }
                 console.debug("[UserContext] Session expired");
-                localStorage.removeItem(SESSION_KEY);
+                sessionStorage.removeItem(SESSION_KEY);
             } catch (e) {
                 console.error("[UserContext] Error parsing session:", e);
-                localStorage.removeItem(SESSION_KEY);
+                sessionStorage.removeItem(SESSION_KEY);
             }
         }
         return null;
@@ -52,10 +53,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 token: btoa(user.email + ':' + Date.now()),
                 expiry: Date.now() + SESSION_DURATION
             };
-            localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
             console.debug("[UserContext] Session saved/refreshed");
         } else {
-            localStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(SESSION_KEY);
             console.debug("[UserContext] Session removed");
         }
     }, [user]);

@@ -40,4 +40,24 @@ class AlumnoRepository extends ServiceEntityRepository
 //            ->getOneOrNullResult()
 //        ;
 //    }
+
+    /**
+     * @return Alumno[] Devuelve un listado completo evitando el N+1 iterativo
+     */
+    public function findAlumnosActivos(?int $centroId = null): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->addSelect('u', 'c') // Hidrata User y Candidaturas en la 1ª query
+            ->innerJoin('a.user', 'u')
+            ->leftJoin('a.candidaturas', 'c'); 
+
+        if ($centroId) {
+            $qb->andWhere('a.centro = :centroId')
+               ->setParameter('centroId', $centroId);
+        }
+
+        return $qb->orderBy('u.nombre', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

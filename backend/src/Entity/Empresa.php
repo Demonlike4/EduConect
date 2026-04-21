@@ -25,6 +25,30 @@ class Empresa
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descripcionPublica = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $logo = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $web = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $linkedin = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $twitter = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $instagram = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $ubicacion = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $tecnologias = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $beneficios = null;
+
     #[ORM\OneToOne(inversedBy: 'empresa', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
@@ -150,6 +174,100 @@ class Empresa
             }
         }
 
+        return $this;
+    }
+
+    public function getLogo(): ?string
+    {
+        return $this->logo;
+    }
+
+    public function setLogo(?string $logo): static
+    {
+        $this->logo = $logo;
+
+        return $this;
+    }
+
+    public function getWeb(): ?string
+    {
+        return $this->web;
+    }
+
+    public function setWeb(?string $web): static
+    {
+        $this->web = $web;
+
+        return $this;
+    }
+
+    public function getLinkedin(): ?string
+    {
+        return $this->linkedin;
+    }
+
+    public function setLinkedin(?string $linkedin): static
+    {
+        $this->linkedin = $linkedin;
+
+        return $this;
+    }
+
+    public function getTwitter(): ?string
+    {
+        return $this->twitter;
+    }
+
+    public function setTwitter(?string $twitter): static
+    {
+        $this->twitter = $twitter;
+
+        return $this;
+    }
+
+    public function getInstagram(): ?string
+    {
+        return $this->instagram;
+    }
+
+    public function setInstagram(?string $instagram): static
+    {
+        $this->instagram = $instagram;
+
+        return $this;
+    }
+
+    public function getUbicacion(): ?string
+    {
+        return $this->ubicacion;
+    }
+
+    public function setUbicacion(?string $ubicacion): static
+    {
+        $this->ubicacion = $ubicacion;
+
+        return $this;
+    }
+
+    public function getTecnologias(): ?string
+    {
+        return $this->tecnologias;
+    }
+
+    public function setTecnologias(?string $tecnologias): static
+    {
+        $this->tecnologias = $tecnologias;
+        return $this;
+    }
+
+    public function getBeneficios(): ?string
+    {
+        return $this->beneficios;
+    }
+
+    public function setBeneficios(?string $beneficios): static
+    {
+        $this->beneficios = $beneficios;
         return $this;
     }
 }

@@ -1,6 +1,5 @@
 import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
-import ThemeToggle from './components/ThemeToggle';
 import AlumnoDashboard from './pages/AlumnoDashboard';
 import EmpresaDashboard from './pages/EmpresaDashboard';
 import TutorCentroDashboard from './pages/TutorCentroDashboard';
@@ -23,7 +22,6 @@ function App() {
         <ThemeProvider>
             <UserProvider>
                 <Router>
-                    <ThemeToggle />
                     <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/login" element={<Login />} />
@@ -47,5 +45,6 @@ function App() {
         </ThemeProvider>
     );
 }
+
 
 export default App;

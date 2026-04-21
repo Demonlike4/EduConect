@@ -1,11 +1,26 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser, type UserRole } from '../context/UserContext';
+import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 
 const Home: React.FC = () => {
     const navigate = useNavigate();
-    const { user, logout } = useUser();
+    const { user } = useUser();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+
+    const { scrollYProgress } = useScroll();
+    const scaleX = useSpring(scrollYProgress, {
+        stiffness: 100,
+        damping: 30,
+        restDelta: 0.001
+    });
+
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const getDashboardPath = (role: UserRole) => {
         switch (role) {
@@ -17,12 +32,7 @@ const Home: React.FC = () => {
         }
     };
 
-    const handleLogout = () => {
-        logout();
-        navigate('/');
-    };
-
-    const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    const scrollToSection = (e: React.MouseEvent<any>, id: string) => {
         e.preventDefault();
         const element = document.getElementById(id);
         if (element) {
@@ -31,66 +41,91 @@ const Home: React.FC = () => {
         }
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.3
+            }
+        }
+    };
+
+    const itemVariants: any = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+    };
+
     return (
-        <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+        <div className="relative min-h-screen w-full bg-[#f8faff] text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+            {/* Scroll Progress Bar */}
+            <motion.div
+                className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 z-[100] origin-left"
+                style={{ scaleX }}
+            />
+
             {/* Navigation Bar */}
-            <header className="fixed top-0 left-0 z-50 w-full bg-primary dark:bg-[#0d47a1] text-white px-6 lg:px-20 py-2.5 shadow-md">
-                <nav className="max-w-[1280px] mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-white p-1 rounded-sm flex items-center justify-center text-primary">
-                            <span className="material-symbols-outlined text-[18px] font-bold">assured_workload</span>
+            <header 
+                className={`fixed top-0 left-0 z-50 w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10 ${
+                    scrolled ? 'py-4 bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm' : 'py-8 bg-transparent'
+                }`}
+            >
+                <nav className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-3 group cursor-pointer" 
+                        onClick={() => navigate('/')}
+                    >
+                        <div className="size-11 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 group-hover:scale-105 transition-transform duration-300">
+                            <span className="material-symbols-outlined text-2xl font-bold">assured_workload</span>
                         </div>
-                        <span className="text-lg font-bold tracking-tight text-white uppercase transition-none">EduConect</span>
-                    </div>
+                        <span className="text-2xl font-black tracking-tight text-slate-900">
+                            Edu<span className="text-indigo-600">Conect</span>
+                        </span>
+                    </motion.div>
 
                     {/* Desktop Menu */}
-                    <div className="hidden md:flex items-center gap-6">
-                        <a
-                            className="text-xs font-bold uppercase tracking-tight hover:underline transition-colors text-white/90"
-                            href="#digitalizar"
-                            onClick={(e) => scrollToSection(e, 'digitalizar')}
-                        >
-                            Digitalización
-                        </a>
-                        <a
-                            className="text-xs font-bold uppercase tracking-tight hover:underline transition-colors text-white/90"
-                            href="#roles"
-                            onClick={(e) => scrollToSection(e, 'roles')}
-                        >
-                            Plataforma
-                        </a>
-                        <a
-                            className="text-xs font-bold uppercase tracking-tight hover:underline transition-colors text-white/90"
-                            href="#resultados"
-                            onClick={(e) => scrollToSection(e, 'resultados')}
-                        >
-                            Resultados
-                        </a>
-                        <div className="h-4 w-[1px] bg-[#dbdfe6] dark:bg-white/10"></div>
-                        <div className="flex items-center gap-3">
+                    <div className="hidden md:flex items-center gap-10">
+                        <div className="flex items-center gap-8">
+                            {['Digitalización', 'Plataforma', 'Resultados'].map((item, i) => (
+                                <motion.a
+                                    key={i}
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.1 * i }}
+                                    className="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors relative group"
+                                    href={`#${item.toLowerCase()}`}
+                                    onClick={(e) => scrollToSection(e, item.toLowerCase())}
+                                >
+                                    {item}
+                                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 transition-all duration-300 group-hover:w-full"></span>
+                                </motion.a>
+                            ))}
+                        </div>
+                        <div className="h-6 w-px bg-slate-200"></div>
+                        <div className="flex items-center gap-4">
                             {user ? (
-                                <>
-                                    <span className="text-xs font-bold text-white/80 hidden lg:block uppercase">{user.nombre.split(' ')[0]}</span>
-                                    <button
-                                        onClick={() => navigate(getDashboardPath(user.role))}
-                                        className="bg-white text-primary text-xs font-bold px-4 py-2 rounded-sm hover:bg-gray-100 transition-none uppercase"
-                                    >
-                                        Panel
-                                    </button>
-                                </>
+                                <button
+                                    onClick={() => navigate(getDashboardPath(user.role))}
+                                    className="px-6 h-11 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 transition-all shadow-xl shadow-slate-900/10 active:scale-95"
+                                >
+                                    Mi Panel
+                                </button>
                             ) : (
                                 <>
                                     <button
                                         onClick={() => navigate('/login')}
-                                        className="bg-transparent border border-white text-white text-xs font-bold px-4 py-2 rounded-sm hover:bg-white/10 transition-none uppercase"
+                                        className="px-4 text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors"
                                     >
-                                        Acceder
+                                        Log in
                                     </button>
                                     <button
                                         onClick={() => navigate('/registro')}
-                                        className="bg-white text-primary text-xs font-bold px-4 py-2 rounded-sm hover:bg-gray-100 transition-none uppercase"
+                                        className="px-6 h-11 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
                                     >
-                                        Registro
+                                        Empieza ahora
                                     </button>
                                 </>
                             )}
@@ -98,346 +133,480 @@ const Home: React.FC = () => {
                     </div>
 
                     {/* Mobile Menu Toggle */}
-                    <button className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                        <span className="material-symbols-outlined">{isMenuOpen ? 'close' : 'menu'}</span>
+                    <button className="md:hidden size-11 flex items-center justify-center text-slate-900 glass-card rounded-xl" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                        <span className="material-symbols-outlined text-2xl">{isMenuOpen ? 'close' : 'menu'}</span>
                     </button>
                 </nav>
 
                 {/* Mobile Menu Dropdown */}
-                {isMenuOpen && (
-                    <div className="md:hidden absolute top-full left-0 w-full bg-white dark:bg-background-dark border-b border-[#dbdfe6] dark:border-white/10 p-6 flex flex-col gap-6 animate-in slide-in-from-top duration-300">
-                        <a
-                            className="text-lg font-medium hover:text-primary transition-colors"
-                            href="#digitalizar"
-                            onClick={(e) => scrollToSection(e, 'digitalizar')}
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="md:hidden overflow-hidden bg-white border-b border-slate-100 shadow-2xl"
                         >
-                            ¿Por qué digitalizar?
-                        </a>
-                        <a
-                            className="text-lg font-medium hover:text-primary transition-colors"
-                            href="#roles"
-                            onClick={(e) => scrollToSection(e, 'roles')}
-                        >
-                            Roles
-                        </a>
-                        <a
-                            className="text-lg font-medium hover:text-primary transition-colors"
-                            href="#resultados"
-                            onClick={(e) => scrollToSection(e, 'resultados')}
-                        >
-                            Resultados
-                        </a>
-                        <div className="flex flex-col gap-4 pt-4 border-t border-[#dbdfe6] dark:border-white/10">
-                            {user ? (
-                                <>
-                                    <div className="text-center py-2 font-medium text-gray-600 dark:text-gray-400">
-                                        Sesión iniciada como <span className="text-primary font-bold">{user.role}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => navigate(getDashboardPath(user.role))}
-                                        className="w-full bg-primary text-white text-lg font-bold py-3 rounded-lg shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+                            <div className="px-6 py-10 flex flex-col gap-6">
+                                {['Digitalización', 'Plataforma', 'Resultados'].map((item, i) => (
+                                    <a
+                                        key={i}
+                                        className="text-2xl font-bold text-slate-900 hover:text-indigo-600 transition-colors"
+                                        href={`#${item.toLowerCase()}`}
+                                        onClick={(e) => scrollToSection(e, item.toLowerCase())}
                                     >
-                                        Ir a mi Panel
-                                    </button>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="w-full bg-white/5 dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 text-[#111318] dark:text-white text-lg font-bold py-3 rounded-xl hover:bg-[#f0f2f4] dark:hover:bg-white/10 transition-all text-center"
-                                    >
-                                        Cerrar Sesión
-                                    </button>
-                                </>
-                            ) : (
-                                <>
+                                        {item}
+                                    </a>
+                                ))}
+                                <div className="pt-6 border-t border-slate-50 flex flex-col gap-4">
                                     <button
                                         onClick={() => navigate('/login')}
-                                        className="w-full bg-white/5 dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 text-[#111318] dark:text-white text-lg font-bold py-3 rounded-xl hover:bg-[#f0f2f4] dark:hover:bg-white/10 transition-all text-center"
+                                        className="w-full h-14 bg-slate-50 text-slate-900 font-bold rounded-2xl"
                                     >
                                         Iniciar Sesión
                                     </button>
                                     <button
                                         onClick={() => navigate('/registro')}
-                                        className="w-full bg-primary text-white text-lg font-bold py-3 rounded-lg shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+                                        className="w-full h-14 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white font-bold rounded-2xl"
                                     >
-                                        Empezar ahora
+                                        Registrarse
                                     </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </header>
 
-            {/* Hero Section with High-Quality Background */}
-            <section className="relative overflow-hidden pt-32 pb-24 lg:pt-48 lg:pb-48 px-6 lg:px-20 border-b border-[#e0e0e0] dark:border-white/5">
-                {/* Background Image Layer */}
-                <div className="absolute inset-0 z-0">
-                    <img 
-                        src="/fct_management_hero_bg_final_1774381111110.png" 
-                        alt="Background" 
-                        className="w-full h-full object-cover opacity-15 dark:opacity-5"
+            {/* Hero Section */}
+            <section className="relative pt-40 lg:pt-56 pb-32 px-6 overflow-hidden">
+                {/* Background Blobs */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-[1400px] pointer-events-none -z-10">
+                    <motion.div 
+                        animate={{ 
+                            scale: [1, 1.1, 1],
+                            opacity: [0.3, 0.5, 0.3],
+                            rotate: [0, 90, 0]
+                        }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        className="absolute top-[-10%] left-[-10%] size-[600px] bg-indigo-200/40 rounded-full blur-[120px]"
                     />
-                    <div className="absolute inset-0 bg-linear-to-b from-white via-transparent to-white dark:from-background-dark dark:to-background-dark"></div>
+                    <motion.div 
+                        animate={{ 
+                            scale: [1, 1.2, 1],
+                            opacity: [0.2, 0.4, 0.2],
+                            rotate: [0, -90, 0]
+                        }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                        className="absolute bottom-[-10%] right-[-10%] size-[500px] bg-blue-200/40 rounded-full blur-[100px]"
+                    />
                 </div>
 
-                {/* Institutional Subtle Pattern Background Layer */}
-                <div className="absolute inset-0 opacity-5 pointer-events-none z-1" style={{ backgroundImage: `radial-gradient(#1a73e8 0.5px, transparent 0.5px)`, backgroundSize: '32px 32px' }}></div>
-                
-                <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
-                    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-left duration-700">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#f0f4f9] dark:bg-primary/10 text-primary-dark text-[11px] font-bold uppercase tracking-widest w-fit border border-primary/20">
-                            <span className="material-symbols-outlined text-[14px]">assured_workload</span>
-                            Sistema de Gestión Académica
-                        </div>
-                        <h1 className="text-5xl lg:text-7xl font-bold leading-[1.05] tracking-tight text-[#111318] dark:text-white uppercase">
-                            Edu<span className="text-primary">Conect</span>
-                        </h1>
-                        <p className="text-lg lg:text-xl text-[#616f89] dark:text-slate-400 max-w-[540px] leading-relaxed">
-                            La plataforma profesional definitiva para la gestión de Formación en Centros de Trabajo (FCT). Una solución integral para centros, empresas y alumnos.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                            {user ? (
-                                <button
-                                    onClick={() => navigate(getDashboardPath(user.role))}
-                                    className="col-span-1 sm:col-span-2 flex items-center justify-center gap-3 bg-primary text-white text-lg font-bold px-8 py-5 rounded-xl shadow-xl shadow-primary/25 hover:translate-y-[-2px] transition-all"
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+                        <motion.div 
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true }}
+                            variants={containerVariants}
+                            className="lg:col-span-7 flex flex-col gap-8"
+                        >
+                            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full w-fit">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                                </span>
+                                <span className="text-indigo-700 text-[11px] font-bold uppercase tracking-wider">Sistema Oficial de Gestión FCT</span>
+                            </motion.div>
+                            
+                            <motion.h1 variants={itemVariants} className="text-6xl lg:text-8xl font-black leading-[1.05] tracking-tight text-slate-900">
+                                Digitaliza el <br />
+                                <span className="text-indigo-600">Futuro</span> de tus <br />
+                                Prácticas.
+                            </motion.h1>
+                            
+                            <motion.p variants={itemVariants} className="text-lg text-slate-500 max-w-xl leading-relaxed">
+                                La plataforma que conecta centros educativos, empresas y alumnos para una gestión de FCT transparente, eficiente y sin papeles.
+                            </motion.p>
+                            
+                            <motion.div variants={itemVariants} className="flex flex-wrap gap-4">
+                                {user ? (
+                                    <button
+                                        onClick={() => navigate(getDashboardPath(user.role))}
+                                        className="h-16 px-10 bg-slate-900 text-white font-bold rounded-2xl hover:bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 transition-all shadow-2xl shadow-slate-900/10 flex items-center gap-3 active:scale-95"
+                                    >
+                                        <span className="material-symbols-outlined">dashboard_customize</span>
+                                        Ir a mi Dashboard
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => navigate('/registro')}
+                                            className="h-16 px-10 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-600/30 flex items-center gap-3 active:scale-95"
+                                        >
+                                            Empezar Gratis
+                                            <span className="material-symbols-outlined">arrow_forward</span>
+                                        </button>
+                                        <button
+                                            onClick={(e) => scrollToSection(e, 'digitalizacion')}
+                                            className="h-16 px-10 bg-white/50 text-slate-700 font-bold rounded-2xl hover:bg-white transition-all active:scale-95"
+                                        >
+                                            Conoce más
+                                        </button>
+                                    </>
+                                )}
+                            </motion.div>
+
+                            <motion.div variants={itemVariants} className="flex items-center gap-6 pt-8 border-t border-slate-100">
+                                <div className="flex -space-x-3">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className="size-10 rounded-full border-2 border-white bg-slate-100 overflow-hidden shadow-sm">
+                                            <img src={`https://i.pravatar.cc/150?u=${i}`} alt="user" className="w-full h-full object-cover opacity-80" />
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">
+                                    <span className="text-slate-900">+5.000 Alumnos</span> <br /> 
+                                    ya confían en nosotros
+                                </p>
+                            </motion.div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                            transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                            className="lg:col-span-5 relative lg:block hidden"
+                        >
+                            <div className="relative z-10 rounded-4xl overflow-hidden p-4">
+                                <motion.div 
+                                    animate={{ y: [0, -10, 0] }}
+                                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                                    className="rounded-3xl overflow-hidden shadow-2xl relative group"
                                 >
-                                    <span className="material-symbols-outlined">dashboard</span>
-                                    Acceder a mi Panel ({user.role?.replace('_', ' ')})
-                                </button>
-                            ) : (
-                                <>
-                                    <button
-                                        onClick={() => navigate('/registro', { state: { role: 'alumno' } })}
-                                        className="flex items-center justify-center gap-3 bg-primary text-white text-base font-bold px-6 py-4 rounded-xl shadow-xl shadow-primary/25 hover:translate-y-[-1px] transition-all"
-                                    >
-                                        <span className="material-symbols-outlined">school</span>
-                                        Soy un Alumno
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/registro', { state: { role: 'tutor_centro' } })}
-                                        className="flex items-center justify-center gap-3 bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 text-[#111318] dark:text-white text-base font-bold px-6 py-4 rounded-xl hover:bg-gray-50 dark:hover:bg-white/10 transition-all"
-                                    >
-                                        <span className="material-symbols-outlined">psychology</span>
-                                        Tutor de Centro
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/registro', { state: { role: 'tutor_empresa' } })}
-                                        className="flex items-center justify-center gap-3 bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 text-[#111318] dark:text-white text-base font-bold px-6 py-4 rounded-xl hover:bg-gray-50 dark:hover:bg-white/10 transition-all"
-                                    >
-                                        <span className="material-symbols-outlined">supervisor_account</span>
-                                        Tutor de Empresa
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/registro', { state: { role: 'empresa' } })}
-                                        className="flex items-center justify-center gap-3 bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 text-[#111318] dark:text-white text-base font-bold px-6 py-4 rounded-xl hover:bg-gray-50 dark:hover:bg-white/10 transition-all"
-                                    >
-                                        <span className="material-symbols-outlined">corporate_fare</span>
-                                        Soy una Empresa
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    <div className="relative animate-in fade-in slide-in-from-right duration-700 delay-100">
-                        <div className="relative bg-gray-100 dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden aspect-video lg:aspect-4/3 flex items-center justify-center border-4 border-white dark:border-background-dark">
-                            <img 
-                                src="/hero_students_collaboration_1774380530901.png" 
-                                alt="FCT Collaboration" 
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-                        <div className="absolute -bottom-6 -left-6 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl border border-[#e0e0e0] dark:border-white/10 hidden md:block animate-in zoom-in duration-500 delay-500">
-                            <div className="flex items-center gap-4">
-                                <div className="size-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                                    <span className="material-symbols-outlined">analytics</span>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sistema Web</p>
-                                    <p className="text-lg font-bold dark:text-white">FCT Digital</p>
-                                </div>
+                                    <img 
+                                        src="/hero_students_collaboration_1774380530901.png" 
+                                        alt="Platform Preview" 
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none" />
+                                </motion.div>
                             </div>
-                        </div>
+
+                            {/* Floating Stats Card */}
+                            <motion.div 
+                                initial={{ x: 50, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ delay: 1, duration: 0.8 }}
+                                className="absolute -bottom-10 -right-10 bg-white p-6 rounded-3xl z-20 w-64 shadow-[0_32px_64px_-16px_rgba(79,70,229,0.2)]"
+                            >
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="size-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                                        <span className="material-symbols-outlined font-bold">trending_up</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ahorro Administrativo</p>
+                                        <p className="text-2xl font-black text-slate-900">-85%</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">Reducción del tiempo de gestión de convenios y firmas.</p>
+                            </motion.div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
 
-            {/* Why Digitalize Section */}
-            <section className="py-24 px-6 lg:px-20 bg-white dark:bg-background-dark/50" id="digitalizar">
-                <div className="max-w-[1280px] mx-auto">
-                    <div className="flex flex-col items-center text-center gap-4 mb-16">
-                        <h2 className="text-3xl lg:text-5xl font-black tracking-tight">¿Por qué digitalizar tus prácticas?</h2>
-                        <p className="text-[#616f89] dark:text-slate-400 max-w-[720px] text-lg">
-                            Optimiza la gestión de la FCT con una plataforma diseñada para eliminar la burocracia y mejorar la comunicación.
-                        </p>
+            {/* Features section */}
+            <section className="py-32 px-6 bg-white" id="digitalizacion">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-20">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="size-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6"
+                        >
+                            <span className="material-symbols-outlined text-4xl">auto_awesome</span>
+                        </motion.div>
+                        <motion.h2 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-4xl lg:text-6xl font-black tracking-tight text-slate-900 mb-6 uppercase"
+                        >
+                            La Nueva Era de la <span className="text-indigo-600">Gestión FCT</span>
+                        </motion.h2>
+                        <motion.p 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-lg text-slate-500 font-medium"
+                        >
+                            Elimina la fricción burocrática y potencia la comunicación real entre todos los actores del ecosistema educativo.
+                        </motion.p>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Efficiency */}
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-[#e0e0e0] dark:border-white/10 shadow-sm hover:translate-y-[-8px] transition-all duration-300">
-                            <div className="w-14 h-14 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-6">
-                                <span className="material-symbols-outlined text-[32px]">bolt</span>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 dark:text-white">Eficiencia</h3>
-                            <p className="text-[#616f89] dark:text-slate-400 leading-relaxed text-sm">
-                                Reduce el papeleo en un 80% y automatiza procesos administrativos. Firma digital integrada para todos los convenios.
-                            </p>
-                        </div>
-                        {/* Transparency */}
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-[#e0e0e0] dark:border-white/10 shadow-sm hover:translate-y-[-8px] transition-all duration-300">
-                            <div className="w-14 h-14 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-6">
-                                <span className="material-symbols-outlined text-[32px]">visibility</span>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 dark:text-white">Transparencia</h3>
-                            <p className="text-[#616f89] dark:text-slate-400 leading-relaxed text-sm">
-                                Seguimiento en tiempo real del progreso, diario de prácticas y evaluaciones. Visibilidad completa para el centro y la empresa.
-                            </p>
-                        </div>
-                        {/* Simplicity */}
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-[#e0e0e0] dark:border-white/10 shadow-sm hover:translate-y-[-8px] transition-all duration-300">
-                            <div className="w-14 h-14 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-6">
-                                <span className="material-symbols-outlined text-[32px]">touch_app</span>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 dark:text-white">Simplicidad</h3>
-                            <p className="text-[#616f89] dark:text-slate-400 leading-relaxed text-sm">
-                                Interfaz intuitiva centrada en el usuario. Gestión de convenios y anexos con un solo clic, sin complicaciones técnicas.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Roles Section */}
-            <section className="py-24 px-6 lg:px-20" id="roles">
-                <div className="max-w-[1280px] mx-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                        <div>
-                            <div className="flex flex-col gap-4 mb-12">
-                                <h2 className="text-3xl lg:text-4xl font-black tracking-tight dark:text-white uppercase transition-none">Perfiles en la plataforma</h2>
-                                <p className="text-[#616f89] dark:text-slate-400 text-lg">Herramientas específicas diseñadas para cada protagonista del proceso educativo.</p>
-                            </div>
-                            <div className="space-y-6">
-                                {/* Student Card */}
-                                <div className="bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 p-6 rounded hover:border-primary/50 transition-all duration-300 group cursor-default">
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <span className="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">person</span>
-                                        <h3 className="text-xl font-bold dark:text-white uppercase">Alumnos</h3>
-                                    </div>
-                                    <p className="text-[#616f89] dark:text-slate-400 text-sm leading-relaxed ml-11">Accede a las mejores ofertas, gestiona tu diario de prácticas y comunica tus avances al instante desde cualquier dispositivo.</p>
-                                </div>
-                                {/* Tutor Card */}
-                                <div className="bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 p-6 rounded hover:border-primary/50 transition-all duration-300 group cursor-default">
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <span className="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">psychology</span>
-                                        <h3 className="text-xl font-bold dark:text-white uppercase">Tutores</h3>
-                                    </div>
-                                    <p className="text-[#616f89] dark:text-slate-400 text-sm leading-relaxed ml-11">Gestiona convenios, asignaciones y evaluaciones sin esfuerzo. Mantén un control total sobre el aprendizaje de tus alumnos.</p>
-                                </div>
-                                {/* Company Card */}
-                                <div className="bg-white dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 p-6 rounded hover:border-primary/50 transition-all duration-300 group cursor-default">
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <span className="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">apartment</span>
-                                        <h3 className="text-xl font-bold dark:text-white uppercase">Empresas</h3>
-                                    </div>
-                                    <p className="text-[#616f89] dark:text-slate-400 text-sm leading-relaxed ml-11">Capta y fideliza el mejor talento de FP. Gestiona la documentación legal y los planes formativos de forma ágil y segura.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="relative group">
-                            <div className="aspect-4/5 rounded overflow-hidden shadow-2xl border-8 border-white dark:border-gray-800 rotate-2 group-hover:rotate-0 transition-transform duration-500">
-                                <img 
-                                    src="/digital_fct_management_1774380548962.png" 
-                                    alt="Management Dashboard" 
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
-                                />
-                            </div>
-                            <div className="absolute -top-4 -right-4 bg-primary text-white p-4 rounded shadow-xl animate-bounce">
-                                <span className="material-symbols-outlined text-3xl">verified</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Stats Section */}
-            <section className="py-20 px-6 lg:px-20 bg-primary dark:bg-primary/90 text-white overflow-hidden relative" id="resultados">
-                <div className="absolute top-0 right-0 w-1/3 h-full opacity-10 pointer-events-none">
-                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M45.7,-77.6C58.9,-71.1,69.1,-58.5,77.5,-44.7C85.9,-30.9,92.5,-15.5,91.8,-0.4C91.1,14.6,83.1,29.3,73.8,42.2C64.6,55.1,54.1,66.1,41.2,74.1C28.2,82.2,14.1,87.2,-0.7,88.4C-15.5,89.6,-30.9,86.9,-44.4,79.5C-57.8,72.1,-69.2,60.1,-77.3,46.4C-85.3,32.7,-90,16.4,-90.6,-0.4C-91.2,-17.1,-87.6,-34.2,-78.9,-47.9C-70.1,-61.7,-56.1,-72.1,-41.6,-77.8C-27.1,-83.4,-12.1,-84.3,2.4,-88.4C16.9,-92.5,32.5,-84.1,45.7,-77.6Z" fill="#FFFFFF" transform="translate(100 100)"></path>
-                    </svg>
-                </div>
-                <div className="max-w-[1280px] mx-auto text-center">
-                    <h2 className="text-2xl lg:text-3xl font-bold mb-16 tracking-tight">Transformando el panorama de la FP en España</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
                         {[
-                            { label: 'Convenios Activos', value: '1000+' },
-                            { label: 'Empresas', value: '500+' },
-                            { label: 'Alumnos', value: '5000+' },
-                            { label: 'Satisfacción', value: '98%' },
-                        ].map((stat, i) => (
-                            <div key={i} className="flex flex-col items-center group cursor-default">
-                                <span className="text-5xl font-black mb-2 group-hover:scale-110 transition-transform duration-300">{stat.value}</span>
-                                <p className="text-primary-foreground/80 font-medium text-sm uppercase tracking-wider">{stat.label}</p>
-                            </div>
+                            { title: 'Automatización inteligente', desc: 'Generación de anexos y convenios con un solo clic. Olvídate del papeleo infinito.', icon: 'bolt', color: 'indigo' },
+                            { title: 'Monitorización en tiempo real', desc: 'Sigue el progreso de cada alumno al instante. Diario de prácticas digital y verificado.', icon: 'monitoring', color: 'blue' },
+                            { title: 'Firma Digital Segura', desc: 'Integración completa para firmas de acuerdos sin necesidad de imprimir ni escanear.', icon: 'verified_user', color: 'emerald' }
+                        ].map((feature, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                                className="group p-10 rounded-4xl bg-[#fcfdff] border border-slate-100 hover:border-indigo-100 hover:bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10 hover:shadow-2xl hover:shadow-indigo-500/5"
+                            >
+                                <div className={`size-14 rounded-2xl bg-${feature.color}-50 text-${feature.color}-600 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-300`}>
+                                    <span className="material-symbols-outlined text-3xl">{feature.icon}</span>
+                                </div>
+                                <h3 className="text-2xl font-bold mb-4 text-slate-900">{feature.title}</h3>
+                                <p className="text-slate-500 leading-relaxed font-medium">
+                                    {feature.desc}
+                                </p>
+                            </motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* CTA Final Section */}
-            <section className="py-24 px-6 lg:px-20 text-center" id="cta">
-                <div className="max-w-[800px] mx-auto bg-gray-50 dark:bg-gray-800 p-10 rounded-lg border border-[#e0e0e0] dark:border-white/10">
-                    <h2 className="text-3xl font-bold mb-4">Empezar a usar el sistema</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-8">Accede ahora para gestionar tus prácticas de FCT de forma sencilla.</p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <button onClick={() => navigate(user ? getDashboardPath(user.role) : '/registro')} className="bg-primary text-white font-bold px-8 py-3 rounded shadow hover:bg-primary-dark transition-none">
-                            {user ? 'Mi Panel' : 'Crear mi cuenta'}
-                        </button>
+            {/* Roles Showcase */}
+            <section className="py-32 px-6 bg-slate-950 text-white relative overflow-hidden" id="plataforma">
+                <div className="absolute inset-0 opacity-10 pointer-events-none">
+                    <div className="absolute top-0 right-0 size-[800px] bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 rounded-full blur-[150px] -mr-96 -mt-96" />
+                    <div className="absolute bottom-0 left-0 size-[600px] bg-blue-600 rounded-full blur-[120px] -ml-64 -mb-64" />
+                </div>
+
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+                        <motion.div 
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="relative"
+                        >
+                            <div className="aspect-[4/3] rounded-4xl overflow-hidden p-2 border-white/5 shadow-2xl skew-y-3 group hover:skew-y-0 transition-transform duration-700">
+                                <img 
+                                    src="/digital_fct_management_1774380548962.png" 
+                                    alt="Management Dashboard" 
+                                    className="w-full h-full object-cover rounded-3xl"
+                                />
+                            </div>
+                            <div className="absolute -bottom-8 -right-8 bg-white/90 p-8 rounded-3xl shadow-2xl max-w-xs animate-bounce-slow">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="size-10 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 rounded-lg flex items-center justify-center text-white">
+                                        <span className="material-symbols-outlined">hub</span>
+                                    </div>
+                                    <span className="text-slate-900 font-bold tracking-tight">Ecosistema Unificado</span>
+                                </div>
+                                <p className="text-slate-500 text-sm font-medium leading-relaxed">Conexión directa entre Tutores, Alumnos y Empresas en una sola interfaz.</p>
+                            </div>
+                        </motion.div>
+
+                        <div className="flex flex-col gap-12">
+                            <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="space-y-6"
+                            >
+                                <div className="px-4 py-1.5 bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 text-[11px] font-semibold tracking-wide w-fit rounded-full">Gestión Multirrol</div>
+                                <h2 className="text-5xl lg:text-7xl font-black tracking-tight leading-none uppercase">
+                                    Una solución <br />
+                                    <span className="text-slate-500">para cada necesidad</span>
+                                </h2>
+                                <p className="text-slate-400 text-lg leading-relaxed max-w-lg">
+                                    Hemos diseñado experiencias a medida para cada tipo de usuario, asegurando que tengan las herramientas exactas que necesitan.
+                                </p>
+                            </motion.div>
+
+                            <div className="space-y-4">
+                                {[
+                                    { label: 'Alumnos', title: 'Tu carrera empieza aquí', desc: 'Gestiona tu cuaderno de bitácora, consulta tutorías y recibe feedbacks.', icon: 'rocket_launch' },
+                                    { label: 'Tutores', title: 'Control total del aula', desc: 'Valida actividades en masa y genera memorias finales automáticamente.', icon: 'psychology' },
+                                    { label: 'Empresas', title: 'Talento a tu alcance', desc: 'Simplifica los convenios y encuentra los perfiles que tu negocio necesita.', icon: 'corporate_fare' }
+                                ].map((role, i) => (
+                                    <motion.div 
+                                        key={i}
+                                        initial={{ opacity: 0, x: 20 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="group p-6 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-indigo-500/50 hover:shadow-2xl transition-all duration-300 cursor-default flex gap-6"
+                                    >
+                                        <div className="size-14 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                            <span className="material-symbols-outlined text-3xl">{role.icon}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-1">{role.label}</p>
+                                            <h3 className="text-xl font-bold mb-2 tracking-tight group-hover:text-indigo-400 transition-colors uppercase">{role.title}</h3>
+                                            <p className="text-slate-400 text-sm font-medium leading-relaxed">{role.desc}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="bg-white dark:bg-background-dark border-t border-[#dbdfe6] dark:border-white/10 py-16 px-6 lg:px-20">
-                <div className="max-w-[1280px] mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-                        <div className="col-span-1 md:col-span-1">
-                            <div className="flex items-center gap-2 mb-4 text-primary">
-                                <span className="material-symbols-outlined text-2xl">school</span>
-                                <span className="text-lg font-bold">EduConect</span>
+            {/* Stats */}
+            <section className="py-32 px-6 bg-white overflow-hidden" id="resultados">
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+                        {[
+                            { value: '1,200+', label: 'Convenios Activos', icon: 'handshake' },
+                            { value: '850+', label: 'Empresas Top', icon: 'business' },
+                            { value: '99.4%', label: 'Satisfacción', icon: 'star' },
+                            { value: '12k+', label: 'Alumnos/Año', icon: 'school' }
+                        ].map((stat, i) => (
+                            <motion.div 
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                                className="relative py-12 px-6"
+                            >
+                                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl font-black text-slate-50/50 pointer-events-none select-none">
+                                    {stat.value.replace('+', '')}
+                                </span>
+                                <div className="relative z-10 flex flex-col items-center">
+                                    <span className="text-5xl lg:text-7xl font-black text-slate-900 tracking-tighter mb-4 group-hover:scale-105 transition-transform">{stat.value}</span>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA section */}
+            <section className="py-32 px-6 bg-gradient-to-b from-white to-indigo-50" id="cta">
+                <div className="max-w-5xl mx-auto">
+                    <motion.div 
+                        initial={{ opacity: 0, y: 40 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="relative rounded-4xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 p-12 lg:p-24 overflow-hidden shadow-2xl shadow-indigo-500/40 text-center"
+                    >
+                        {/* Decorative Background */}
+                        <div className="absolute inset-0 opacity-20 pointer-events-none">
+                            <div className="absolute top-0 right-0 size-96 bg-white rounded-full blur-[80px] -mr-48 -mt-48" />
+                            <div className="absolute bottom-0 left-0 size-80 bg-blue-400 rounded-full blur-[70px] -ml-40 -mb-40" />
+                        </div>
+
+                        <div className="relative z-10 flex flex-col items-center gap-8">
+                            <h2 className="text-4xl lg:text-7xl font-black text-white tracking-tight uppercase leading-none">
+                                ¿Listo para <br />
+                                <span className="text-indigo-200">empezar a crecer?</span>
+                            </h2>
+                            <p className="text-indigo-100 text-lg lg:text-xl font-medium max-w-xl">
+                                Únete a los cientos de centros y empresas que ya han digitalizado su formación profesional con EduConect.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <button 
+                                    onClick={() => navigate(user ? getDashboardPath(user.role) : '/registro')}
+                                    className="h-16 px-12 bg-white text-indigo-600 font-bold rounded-2xl hover:bg-slate-50 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
+                                >
+                                    {user ? 'Volver a mi Panel' : 'Crear mi Ecosistema'}
+                                    <span className="material-symbols-outlined">rocket_launch</span>
+                                </button>
+                                {!user && (
+                                    <button 
+                                        onClick={() => navigate('/login')}
+                                        className="h-16 px-12 border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all"
+                                    >
+                                        Iniciar Sesión
+                                    </button>
+                                )}
                             </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Gestión digital de la Formación Profesional.
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="bg-white border-t border-slate-100 py-24 px-6 overflow-hidden">
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-16 mb-20">
+                        <div className="md:col-span-5 space-y-8">
+                            <div className="flex items-center gap-3">
+                                <div className="size-12 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                                    <span className="material-symbols-outlined text-2xl font-bold">assured_workload</span>
+                                </div>
+                                <span className="text-2xl font-black tracking-tight text-slate-900 uppercase">Edu<span className="text-indigo-600">Conect</span></span>
+                            </div>
+                            <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-sm">
+                                Transformando el futuro de la educación mediante la digitalización inteligente de la formación profesional.
                             </p>
                         </div>
-                        <div>
-                            <h4 className="font-bold mb-6 text-gray-900 dark:text-white uppercase text-xs tracking-widest">Plataforma</h4>
-                            <ul className="flex flex-col gap-4 text-sm text-[#616f89] dark:text-slate-400">
-                                <li><a className="hover:text-primary" href="#digitalizar" onClick={(e) => scrollToSection(e, 'digitalizar')}>Cómo funciona</a></li>
-                                <li><a className="hover:text-primary" href="#roles" onClick={(e) => scrollToSection(e, 'roles')}>Gestión de Roles</a></li>
-                                <li><a className="hover:text-primary" href="#resultados" onClick={(e) => scrollToSection(e, 'resultados')}>Resultados y Estadísticas</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold mb-6 text-gray-900 dark:text-white uppercase text-xs tracking-widest">Servicios</h4>
-                            <ul className="flex flex-col gap-4 text-sm text-[#616f89] dark:text-slate-400">
-                                <li><a className="hover:text-primary" href="#cta" onClick={(e) => scrollToSection(e, 'cta')}>Empezar ahora</a></li>
-                                <li><Link className="hover:text-primary" to="/privacidad">Privacidad</Link></li>
-                                <li><a className="hover:text-primary" href="mailto:soporte@educonect.com">Contacto Soporte</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold mb-6">Legal</h4>
-                            <ul className="flex flex-col gap-4 text-sm text-[#616f89] dark:text-slate-400">
-                                <li><Link className="hover:text-primary" to="/privacidad">Privacidad</Link></li>
-                                <li><Link className="hover:text-primary" to="/terminos">Términos de servicio</Link></li>
-                                <li><Link className="hover:text-primary" to="/cookies">Cookies</Link></li>
-                            </ul>
+
+                        <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-12">
+                            {[
+                                { 
+                                    title: 'Plataforma', 
+                                    links: [
+                                        { label: 'Cómo funciona', path: '#digitalizacion', scroll: true },
+                                        { label: 'Gestión de Roles', path: '#plataforma', scroll: true },
+                                        { label: 'Seguridad Cloud', path: '#cta', scroll: true }
+                                    ] 
+                                },
+                                { 
+                                    title: 'Soporte', 
+                                    links: [
+                                        { label: 'Ayuda', path: '#' },
+                                        { label: 'Guías de Usuario', path: '#' },
+                                        { label: 'Contacto', path: '#' }
+                                    ] 
+                                },
+                                { 
+                                    title: 'Legal', 
+                                    links: [
+                                        { label: 'Privacidad', path: '/privacidad' },
+                                        { label: 'Términos', path: '/terminos' },
+                                        { label: 'Cookies', path: '/cookies' }
+                                    ] 
+                                }
+                            ].map((group, i) => (
+                                <div key={i} className="space-y-6">
+                                    <h4 className="text-[10px] font-semibold tracking-wide text-slate-400 tracking-[0.2em]">{group.title}</h4>
+                                    <ul className="space-y-4">
+                                        {group.links.map((link, j) => (
+                                            <li key={j}>
+                                                <button 
+                                                    onClick={(e) => {
+                                                        if ((link as any).scroll) {
+                                                            scrollToSection(e, link.path.replace('#', ''));
+                                                        } else {
+                                                            navigate(link.path);
+                                                            window.scrollTo(0, 0);
+                                                        }
+                                                    }}
+                                                    className="text-slate-600 hover:text-indigo-600 font-bold transition-colors text-left"
+                                                >
+                                                    {link.label}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-[#dbdfe6] dark:border-white/10 text-sm text-[#616f89]">
-                        <p>© 2024 EduPrácticas Connect. Todos los derechos reservados.</p>
-                        <div className="flex gap-6 mt-4 md:mt-0">
-                            <a className="hover:text-primary" href="#"><span className="material-symbols-outlined">public</span></a>
-                            <a className="hover:text-primary" href="#"><span className="material-symbols-outlined">alternate_email</span></a>
-                            <a className="hover:text-primary" href="#"><span className="material-symbols-outlined">share</span></a>
+
+                    <div className="pt-12 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-8">
+                        <p className="text-slate-400 text-xs font-medium">
+                            © 2026 EduPrácticas Connect — Innovación Educativa para el Siglo XXI.
+                        </p>
+                        <div className="flex items-center gap-6">
+                             <div className="flex items-center gap-2 text-slate-400">
+                                 <span className="size-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                                 <span className="text-[10px] font-semibold tracking-wide">Todos los sistemas operativos</span>
+                             </div>
                         </div>
                     </div>
                 </div>

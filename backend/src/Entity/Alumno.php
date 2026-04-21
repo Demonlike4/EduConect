@@ -22,6 +22,9 @@ class Alumno
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $cvPdf = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $foto = null;
+
     #[ORM\OneToOne(inversedBy: 'alumno', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
@@ -71,6 +74,18 @@ class Alumno
     public function setCvPdf(?string $cvPdf): static
     {
         $this->cvPdf = $cvPdf;
+
+        return $this;
+    }
+
+    public function getFoto(): ?string
+    {
+        return $this->foto;
+    }
+
+    public function setFoto(?string $foto): static
+    {
+        $this->foto = $foto;
 
         return $this;
     }

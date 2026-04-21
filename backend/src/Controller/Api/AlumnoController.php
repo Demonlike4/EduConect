@@ -96,8 +96,10 @@ class AlumnoController extends AbstractController
         $dashboardData = [
             'nombre' => $user->getNombre(),
             'grado' => $alumno->getGrado() ? $alumno->getGrado()->getNombre() : 'Sin grado',
+            'foto' => $alumno->getFoto(),
             'estado_practicas' => $activeCandidatura ? $activeCandidatura->getEstado() : 'Sin solicitud',
             'empresa' => $activeCandidatura && $activeCandidatura->getOferta() ? $activeCandidatura->getOferta()->getEmpresa()->getNombreComercial() : null,
+            'empresa_logo' => $activeCandidatura && $activeCandidatura->getOferta() ? $activeCandidatura->getOferta()->getEmpresa()->getLogo() : null,
             'puesto' => $activeCandidatura && $activeCandidatura->getOferta() ? $activeCandidatura->getOferta()->getTitulo() : null,
             'tutor_empresa' => $activeCandidatura && $activeCandidatura->getTutorEmpresa() ? ($activeCandidatura->getTutorEmpresa()->getNombre() ?? $activeCandidatura->getTutorEmpresa()->getEmail()) : null,
             'tutor_centro' => $activeCandidatura && $activeCandidatura->getTutorCentro() ? ($activeCandidatura->getTutorCentro()->getNombre() ?? $activeCandidatura->getTutorCentro()->getEmail()) : null,
@@ -116,14 +118,35 @@ class AlumnoController extends AbstractController
         $data = [];
 
         foreach ($ofertas as $oferta) {
+            $empresa = $oferta->getEmpresa();
+            if (!$empresa) continue;
+
             $data[] = [
                 'id' => $oferta->getId(),
                 'titulo' => $oferta->getTitulo(),
                 'descripcion' => $oferta->getDescripcion(),
-                'empresa' => $oferta->getEmpresa()->getNombreComercial(),
-                'ubicacion' => 'Granada', // Mock location if not in entity
+                'empresa' => $empresa->getNombreComercial(),
+                'ubicacion' => $empresa->getUbicacion() ?? 'Granada',
                 'fecha' => 'Reciente',
-                'tags' => ['React', 'Symfony'] // Mock tags
+                'tags' => $oferta->getTecnologias() ? explode(',', $oferta->getTecnologias()) : ['General'],
+                'tipo' => $oferta->getTipo() ?? 'Por definir',
+                'jornada' => $oferta->getJornada() ?? 'Por definir',
+                'horario' => $oferta->getHorario() ?? 'Por definir',
+                'empresa_data' => [
+                    'id' => $empresa->getId(),
+                    'nombre' => $empresa->getNombreComercial(),
+                    'descripcion' => $empresa->getDescripcionPublica(),
+                    'logo' => $empresa->getLogo(),
+                    'web' => $empresa->getWeb(),
+                    'linkedin' => $empresa->getLinkedin(),
+                    'twitter' => $empresa->getTwitter(),
+                    'instagram' => $empresa->getInstagram(),
+                    'ubicacion' => $empresa->getUbicacion(),
+                    'tecnologias' => $empresa->getTecnologias() ? explode(',', $empresa->getTecnologias()) : [],
+                    'beneficios' => $empresa->getBeneficios() ? explode(',', $empresa->getBeneficios()) : []
+                ],
+                'color' => $oferta->getColor(),
+                'imagen' => $oferta->getImagen()
             ];
         }
 
@@ -208,6 +231,7 @@ class AlumnoController extends AbstractController
             'bio' => 'Estudiante apasionado...', // Mock or add field to Entity
             'habilidades' => $alumno->getHabilidades() ? explode(',', $alumno->getHabilidades()) : [],
             'cv' => $alumno->getCvPdf(),
+            'foto' => $alumno->getFoto(),
             'centro' => $alumno->getCentro() ? $alumno->getCentro()->getNombre() : ''
         ]);
     }
@@ -276,6 +300,50 @@ class AlumnoController extends AbstractController
             ]);
         } catch (\Exception $e) {
             return $this->json(['error' => 'Error al guardar el archivo: ' . $e->getMessage()], 500);
+        }
+    }
+
+    #[Route('/profile/foto', name: 'api_alumno_profile_foto', methods: ['POST'])]
+    public function uploadFoto(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $email = $request->request->get('email');
+        $file = $request->files->get('foto');
+
+        if (!$email || !$file) {
+            return $this->json(['error' => 'Faltan datos o archivo'], 400);
+        }
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user || !$user->getAlumno()) {
+            return $this->json(['error' => 'Alumno no encontrado'], 404);
+        }
+
+        $alumno = $user->getAlumno();
+
+        // Validar que es una imagen
+        if (!str_starts_with($file->getMimeType(), 'image/')) {
+            return $this->json(['error' => 'Solo se permiten imágenes'], 400);
+        }
+
+        $uploadDir = $this->getParameter('foto_uploads_directory');
+        $fileName = uniqid() . '.' . $file->guessExtension();
+
+        try {
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $file->move($uploadDir, $fileName);
+            $alumno->setFoto($fileName);
+            $em->flush();
+
+            return $this->json([
+                'status' => 'success', 
+                'message' => 'Foto actualizada correctamente',
+                'foto' => $fileName
+            ]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Error al guardar la imagen: ' . $e->getMessage()], 500);
         }
     }
 }

@@ -52,7 +52,10 @@ class EmpresaController extends AbstractController
                 'tecnologias' => $oferta->getTecnologias(),
                 'ubicacion' => $oferta->getUbicacion(),
                 'jornada' => $oferta->getJornada(),
+                'horario' => $oferta->getHorario(),
                 'estado' => $oferta->getEstado(),
+                'color' => $oferta->getColor(),
+                'imagen' => $oferta->getImagen(),
                 'candidatos' => $oferta->getCandidaturas()->count(),
                 'fecha' => 'Reciente'
             ];
@@ -84,13 +87,70 @@ class EmpresaController extends AbstractController
         $oferta->setTecnologias($data['tecnologias'] ?? '');
         $oferta->setUbicacion($data['ubicacion'] ?? 'No especificada');
         $oferta->setJornada($data['jornada'] ?? 'Completa');
+        $oferta->setHorario($data['horario'] ?? null);
         $oferta->setEstado('Activa');
+        $oferta->setColor($data['color'] ?? null);
+        $oferta->setImagen($data['imagen'] ?? null);
         $oferta->setEmpresa($user->getEmpresa());
          
         $em->persist($oferta);
         $em->flush();
          
         return $this->json(['status' => 'success', 'id' => $oferta->getId()], 201);
+    }
+
+    #[Route('/ofertas/{id}/update', name: 'api_empresa_ofertas_update', methods: ['POST'])]
+    public function updateOferta(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? null;
+
+        if (!$email) {
+            return $this->json(['error' => 'Email required'], 400);
+        }
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user || !$user->getEmpresa()) {
+            return $this->json(['error' => 'Empresa not found'], 404);
+        }
+
+        $oferta = $em->getRepository(Oferta::class)->find($id);
+        if (!$oferta || $oferta->getEmpresa()->getId() !== $user->getEmpresa()->getId()) {
+            return $this->json(['error' => 'Oferta not found or unauthorized'], 404);
+        }
+
+        if (isset($data['titulo']))      $oferta->setTitulo($data['titulo']);
+        if (isset($data['descripcion'])) $oferta->setDescripcion($data['descripcion']);
+        if (isset($data['tecnologias'])) $oferta->setTecnologias($data['tecnologias']);
+        if (isset($data['ubicacion']))   $oferta->setUbicacion($data['ubicacion']);
+        if (isset($data['jornada']))     $oferta->setJornada($data['jornada']);
+        if (isset($data['horario']))     $oferta->setHorario($data['horario']);
+        if (isset($data['tipo']))        $oferta->setTipo($data['tipo']);
+        if (isset($data['color']))       $oferta->setColor($data['color']);
+        if (isset($data['imagen']))      $oferta->setImagen($data['imagen']);
+
+        $em->flush();
+
+        return $this->json(['status' => 'success']);
+    }
+
+    #[Route('/ofertas/upload-image', name: 'api_empresa_oferta_image_upload', methods: ['POST'])]
+    public function uploadOfferImage(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $file = $request->files->get('imagen');
+        if (!$file) {
+            return $this->json(['error' => 'Archivo no encontrado'], 400);
+        }
+
+        $uploadDir = $this->getParameter('oferta_images_directory');
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $fileName = uniqid() . '.' . $file->guessExtension();
+        $file->move($uploadDir, $fileName);
+
+        return $this->json(['status' => 'success', 'filename' => $fileName]);
     }
 
     #[Route('/candidatos', name: 'api_empresa_candidatos', methods: ['POST'])]
@@ -132,6 +192,7 @@ class EmpresaController extends AbstractController
                     'fecha_fin' => $candidatura->getFechaFin() ? $candidatura->getFechaFin()->format('Y-m-d') : null,
                     'tutor_empresa' => $candidatura->getTutorEmpresa() ? ($candidatura->getTutorEmpresa()->getNombre() ?? $candidatura->getTutorEmpresa()->getEmail()) : null,
                     'tutor_centro' => $candidatura->getTutorCentro() ? ($candidatura->getTutorCentro()->getNombre() ?? $candidatura->getTutorCentro()->getEmail()) : null,
+                    'foto' => $alumnoObj->getFoto(),
                 ];
             }
         }
@@ -256,5 +317,103 @@ class EmpresaController extends AbstractController
         $em->flush();
 
         return $this->json(['status' => 'success', 'message' => 'Tutor aprobado correctamente']);
+    }
+
+    #[Route('/profile', name: 'api_empresa_profile', methods: ['POST'])]
+    public function getProfile(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? null;
+
+        if (!$email) return $this->json(['error' => 'Email required'], 400);
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user || !$user->getEmpresa()) return $this->json(['error' => 'Empresa not found'], 404);
+
+        $empresa = $user->getEmpresa();
+
+        return $this->json([
+            'nombre' => $empresa->getNombreComercial(),
+            'cif' => $empresa->getCif(),
+            'descripcion' => $empresa->getDescripcionPublica(),
+            'logo' => $empresa->getLogo(),
+            'web' => $empresa->getWeb(),
+            'linkedin' => $empresa->getLinkedin(),
+            'twitter' => $empresa->getTwitter(),
+            'instagram' => $empresa->getInstagram(),
+            'ubicacion' => $empresa->getUbicacion(),
+            'tecnologias' => $empresa->getTecnologias() ? explode(',', $empresa->getTecnologias()) : [],
+            'beneficios' => $empresa->getBeneficios() ? explode(',', $empresa->getBeneficios()) : [],
+            'email' => $user->getEmail()
+        ]);
+    }
+
+    #[Route('/profile/update', name: 'api_empresa_profile_update', methods: ['POST'])]
+    public function updateProfile(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? null;
+
+        if (!$email) return $this->json(['error' => 'Email required'], 400);
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user || !$user->getEmpresa()) return $this->json(['error' => 'Empresa not found'], 404);
+
+        $empresa = $user->getEmpresa();
+
+        if (isset($data['nombre'])) $empresa->setNombreComercial($data['nombre']);
+        if (isset($data['descripcion'])) $empresa->setDescripcionPublica($data['descripcion']);
+        if (isset($data['web'])) $empresa->setWeb($data['web']);
+        if (isset($data['linkedin'])) $empresa->setLinkedin($data['linkedin']);
+        if (isset($data['twitter'])) $empresa->setTwitter($data['twitter']);
+        if (isset($data['instagram'])) $empresa->setInstagram($data['instagram']);
+        if (isset($data['ubicacion'])) $empresa->setUbicacion($data['ubicacion']);
+        if (isset($data['tecnologias'])) $empresa->setTecnologias(is_array($data['tecnologias']) ? implode(',', $data['tecnologias']) : $data['tecnologias']);
+        if (isset($data['beneficios'])) $empresa->setBeneficios(is_array($data['beneficios']) ? implode(',', $data['beneficios']) : $data['beneficios']);
+        if (isset($data['logo'])) $empresa->setLogo($data['logo']);
+
+        $em->flush();
+
+        return $this->json(['status' => 'success', 'message' => 'Perfil actualizado correctamente']);
+    }
+
+    #[Route('/profile/logo-upload', name: 'api_empresa_logo_upload', methods: ['POST'])]
+    public function uploadLogo(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $file = $request->files->get('logo');
+        $email = $request->request->get('email');
+
+        if (!$file || !$email) {
+            return $this->json(['error' => 'No file or email provided'], 400);
+        }
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user || !$user->getEmpresa()) {
+            return $this->json(['error' => 'Empresa not found'], 404);
+        }
+
+        $empresa = $user->getEmpresa();
+        
+        // Save file
+        $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/logos';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $fileName = uniqid() . '.' . $file->guessExtension();
+        $file->move($uploadDir, $fileName);
+
+        $logoPath = '/uploads/logos/' . $fileName;
+        
+        // We don't persist here necessarily, just return the path to the frontend
+        // so it can be saved with the rest of the profile, or we can persist now.
+        // Let's persist now to make it feel immediate.
+        $empresa->setLogo($logoPath);
+        $em->flush();
+
+        return $this->json([
+            'status' => 'success',
+            'logo' => $logoPath
+        ]);
     }
 }

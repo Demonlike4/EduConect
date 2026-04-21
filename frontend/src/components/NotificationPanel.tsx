@@ -27,7 +27,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
         const fetchNotifications = async () => {
             if (user?.email) {
                 try {
-                    const res = await axios.post('http://localhost:8000/api/notificaciones', { email: user.email });
+                    const res = await axios.post('https://educonect.alwaysdata.net/api/notificaciones', { email: user.email });
                     setNotifications(res.data.notificaciones || []);
                 } catch (err) {
                     console.error("Error fetching notifications:", err);
@@ -48,7 +48,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
 
     const markAsRead = async (notif: AppNotification) => {
         try {
-            await axios.post(`http://localhost:8000/api/notificaciones/${notif.id}/read`);
+            await axios.post(`https://educonect.alwaysdata.net/api/notificaciones/${notif.id}/read`);
             setNotifications(prev => prev.filter(n => n.id !== notif.id));
             if (onActionClick) {
                 onActionClick(notif);
@@ -93,59 +93,69 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded border border-[#e0e0e0] dark:border-white/10 flex flex-col h-full">
-            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 dark:border-white/5 pb-4">
-                <span className="material-symbols-outlined text-amber-600 text-[22px]">notifications</span>
-                <h3 className="text-lg font-bold dark:text-white uppercase tracking-tight">Notificaciones</h3>
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[32px] border border-zinc-200 dark:border-zinc-800 flex flex-col shadow-xl">
+            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
+                    <span className="material-symbols-outlined text-indigo-600 text-[22px]">notifications</span>
+                </div>
+                <div>
+                    <h3 className="text-lg font-black dark:text-white uppercase tracking-tight leading-none">Notificaciones</h3>
+                    <p className="text-[10px] text-zinc-400 font-semibold tracking-wide mt-1">Alertas en tiempo real</p>
+                </div>
             </div>
             
-            <div className="flex flex-col gap-4 flex-1">
+            <div className="flex flex-col gap-4">
                 {loading ? (
-                    <div className="text-center py-10 text-slate-400">
-                        <span className="material-symbols-outlined animate-spin text-3xl mb-2">progress_activity</span>
-                        <p className="text-sm font-bold">Cargando alertas...</p>
+                    <div className="text-center py-12 text-zinc-400">
+                        <span className="material-symbols-outlined animate-spin text-3xl mb-3 text-indigo-600/30">progress_activity</span>
+                        <p className="text-[10px] font-semibold tracking-wide">Sincronizando...</p>
                     </div>
                 ) : notifications.filter(n => !n.leida).length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex-1">
-                        <div className="size-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                            <span className="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600">notifications_paused</span>
+                    <div className="flex flex-col items-center justify-center p-10 text-center bg-zinc-50 dark:bg-zinc-800/10 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                        <div className="size-16 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center mb-5 shadow-sm">
+                            <span className="material-symbols-outlined text-3xl text-zinc-200 dark:text-zinc-600">notifications_paused</span>
                         </div>
-                        <p className="text-slate-500 font-bold dark:text-slate-400 text-sm">No tienes alertas pendientes</p>
-                        <p className="text-xs text-slate-400 mt-1 max-w-[200px]">Te avisaremos cuando haya novedades en tus procesos.</p>
+                        <p className="text-zinc-900 font-black dark:text-white text-sm uppercase tracking-tight">Sin alertas pendientes</p>
+                        <p className="text-[10px] text-zinc-400 mt-2 font-semibold tracking-wide max-w-[180px]">Te avisaremos cuando haya novedades en tus procesos.</p>
                     </div>
                 ) : (
-                    notifications.filter(n => !n.leida).map((notif) => {
-                        const styles = getStylesByType(notif.type);
-                        return (
-                            <div key={notif.id} className={`p-3 rounded border ${styles.bg} ${styles.border} flex flex-col`}>
-                                <div className="flex items-start gap-3">
-                                    <span className={`material-symbols-outlined ${styles.iconColor} text-[20px]`}>
-                                        {notif.icon || 'notifications'}
-                                    </span>
-                                    <div className="flex-1">
-                                        <h4 className={`font-bold text-sm leading-tight mb-1 ${styles.titleColor}`}>
-                                            {notif.title}
-                                        </h4>
-                                        <p className={`text-xs leading-snug mb-2 ${styles.descColor}`}>
-                                            {notif.desc}
-                                        </p>
-                                        <button 
-                                            onClick={() => markAsRead(notif)}
-                                            className="text-xs font-bold text-primary hover:underline"
-                                        >
-                                            {notif.action || 'Aceptar'}
-                                        </button>
+                    <div className="space-y-4">
+                        {notifications.filter(n => !n.leida).map((notif) => {
+                            const styles = getStylesByType(notif.type);
+                            return (
+                                <div key={notif.id} className={`p-4 rounded-2xl border transition-all duration-300 hover:shadow-md ${styles.bg} ${styles.border} flex flex-col`}>
+                                    <div className="flex items-start gap-3">
+                                        <div className={`size-8 rounded-lg ${styles.bg} border ${styles.border} flex items-center justify-center shrink-0 shadow-sm`}>
+                                            <span className={`material-symbols-outlined ${styles.iconColor} text-[18px]`}>
+                                                {notif.icon || 'notifications'}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className={`font-black text-xs uppercase tracking-tight mb-1 truncate ${styles.titleColor}`}>
+                                                {notif.title}
+                                            </h4>
+                                            <p className={`text-[11px] font-medium leading-relaxed mb-3 ${styles.descColor}`}>
+                                                {notif.desc}
+                                            </p>
+                                            <button 
+                                                onClick={() => markAsRead(notif)}
+                                                className="text-[9px] font-semibold tracking-wide text-indigo-600 hover:text-indigo-700 underline underline-offset-4 decoration-2"
+                                            >
+                                                {notif.action || 'Aceptar'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })
+                            );
+                        })}
+                    </div>
                 )}
             </div>
             
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10 text-center">
-                <button className="text-xs font-medium text-gray-400 hover:text-primary transition-none">
-                    Ver historial
+            <div className="mt-8 pt-5 border-t border-zinc-100 dark:border-zinc-800 text-center">
+                <button className="text-[10px] font-black text-zinc-300 hover:text-indigo-600 uppercase tracking-widest transition-colors flex items-center gap-2 justify-center mx-auto">
+                    Historial de Actividad
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </button>
             </div>
         </div>

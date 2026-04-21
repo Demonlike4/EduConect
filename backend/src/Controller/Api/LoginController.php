@@ -9,10 +9,12 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Doctrine\ORM\EntityManagerInterface;
 
 class LoginController extends AbstractController
 {
+    #[IsGranted('ROLE_SUPERADMIN')]
     #[Route('/api/setup-admin', name: 'api_setup_admin', methods: ['GET'])]
     public function setupAdmin(EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
@@ -69,7 +71,8 @@ class LoginController extends AbstractController
                 'role' => $role,
                 'isAprobado' => $user->isAprobado(),
                 'grado' => $user->getAlumno() ? $user->getAlumno()->getGrado()?->getNombre() : null,
-                'centro' => $user->getCentroEducativo() ? $user->getCentroEducativo()->getNombre() : ($user->getAlumno() && $user->getAlumno()->getCentro() ? $user->getAlumno()->getCentro()->getNombre() : null)
+                'centro' => $user->getCentroEducativo() ? $user->getCentroEducativo()->getNombre() : ($user->getAlumno() && $user->getAlumno()->getCentro() ? $user->getAlumno()->getCentro()->getNombre() : null),
+                'foto' => $user->getAlumno() ? $user->getAlumno()->getFoto() : null
             ]
         ]);
     }

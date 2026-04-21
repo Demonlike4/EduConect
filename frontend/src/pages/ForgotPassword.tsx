@@ -11,7 +11,7 @@ const ForgotPassword = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await axios.post('http://localhost:8000/api/auth/forgot-password', { email });
+            const res = await axios.post('https://educonect.alwaysdata.net/api/auth/forgot-password', { email });
             setMessage(res.data.message);
             if (res.data.dev_mode_token) {
                 setDevToken(res.data.dev_mode_link); // just to show on screen for this dev scenario
