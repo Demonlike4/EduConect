@@ -279,17 +279,12 @@ class CandidaturaManager
     public function generateConvenioHtml(Candidatura $candidatura): string
     {
         // ── Extracción de datos ──────────────────────────────────────────────
-        $alumno      = $candidatura->getAlumno()->getUser()->getNombre()
-                    ?? $candidatura->getAlumno()->getUser()->getEmail();
-        $alumnoEntity = $candidatura->getAlumno();
-        $dniAlumno    = ($alumnoEntity && method_exists($alumnoEntity, 'getDni') && $alumnoEntity->getDni())
-                        ? $alumnoEntity->getDni()
-                        : '—';
+        $alumnoUser  = $candidatura->getAlumno()->getUser();
+        $alumno      = ($alumnoUser && $alumnoUser->getNombre()) ? $alumnoUser->getNombre() : ($alumnoUser ? $alumnoUser->getEmail() : 'N/D');
+        // Nota: la entidad Alumno no dispone de campo 'dni'. Se muestra N/D en el documento.
         $empresa     = $candidatura->getOferta()->getEmpresa()->getNombreComercial();
         $empresaEntity = $candidatura->getOferta()->getEmpresa();
-        $cifEmpresa    = ($empresaEntity && method_exists($empresaEntity, 'getCif') && $empresaEntity->getCif())
-                         ? $empresaEntity->getCif()
-                         : '—';
+        $cifEmpresa    = ($empresaEntity && $empresaEntity->getCif()) ? $empresaEntity->getCif() : '—';
         $oferta      = $candidatura->getOferta()->getTitulo() ?? 'Formación en Centros de Trabajo';
         $centro      = $candidatura->getAlumno()->getCentro()
                         ? $candidatura->getAlumno()->getCentro()->getNombre()
@@ -583,7 +578,7 @@ class CandidaturaManager
             </div>
             <div class="field-row">
                 <span class="field-label">DNI / NIE:</span>
-                <span class="field-value">{$dniAlumno}</span>
+                <span class="field-value">N/D</span>
             </div>
             <div class="field-row">
                 <span class="field-label">Centro Educativo:</span>
