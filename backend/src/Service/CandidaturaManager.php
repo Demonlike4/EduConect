@@ -281,9 +281,15 @@ class CandidaturaManager
         // ── Extracción de datos ──────────────────────────────────────────────
         $alumno      = $candidatura->getAlumno()->getUser()->getNombre()
                     ?? $candidatura->getAlumno()->getUser()->getEmail();
-        $dniAlumno   = $candidatura->getAlumno()->getDni() ?? '—';
+        $alumnoEntity = $candidatura->getAlumno();
+        $dniAlumno    = ($alumnoEntity && method_exists($alumnoEntity, 'getDni') && $alumnoEntity->getDni())
+                        ? $alumnoEntity->getDni()
+                        : '—';
         $empresa     = $candidatura->getOferta()->getEmpresa()->getNombreComercial();
-        $cifEmpresa  = $candidatura->getOferta()->getEmpresa()->getCif() ?? '—';
+        $empresaEntity = $candidatura->getOferta()->getEmpresa();
+        $cifEmpresa    = ($empresaEntity && method_exists($empresaEntity, 'getCif') && $empresaEntity->getCif())
+                         ? $empresaEntity->getCif()
+                         : '—';
         $oferta      = $candidatura->getOferta()->getTitulo() ?? 'Formación en Centros de Trabajo';
         $centro      = $candidatura->getAlumno()->getCentro()
                         ? $candidatura->getAlumno()->getCentro()->getNombre()
