@@ -1,0 +1,80 @@
+name: EduConect CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-frontend:
+    name: Build & Deploy React Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Application
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUCONECT }}'
+          projectId: educonect-app
+          channelId: live
+
+  deploy-backend:
+    name: Deploy Symfony Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      - name: Install Composer Dependencies
+        working-directory: ./backend
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ALWAYSDATA_SSH_PRIVATE_KEY }}
+
+      - name: Add Known Hosts
+        run: ssh-keyscan -H ${{ secrets.ALWAYSDATA_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via Rsync
+        run: |
+          rsync -avz --delete \
+          --exclude='.env.local' \
+          --exclude='var/cache/' \
+          --exclude='var/log/' \
+          ./backend/ ${{ secrets.ALWAYSDATA_SSH_USER }}@${{ secrets.ALWAYSDATA_SSH_HOST }}:/home/${{ secrets.ALWAYSDATA_SSH_USER }}/www/
+
+      - name: Execute Remote Migrations & Cache Clear
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ALWAYSDATA_SSH_HOST }}
+          username: ${{ secrets.ALWAYSDATA_SSH_USER }}
+          key: ${{ secrets.ALWAYSDATA_SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/${{ secrets.ALWAYSDATA_SSH_USER }}/www
+            php bin/console doctrine:migrations:migrate --no-interaction
+            php bin/console cache:clear --env=prod
