@@ -1,430 +1,421 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import api from '../lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../context/UserContext';
+import Logo from '../components/common/Logo';
 
-interface Centro {
-    id: number;
-    nombre: string;
-}
-
-// Removed hardcoded centros
-interface Empresa {
-    id: number;
-    nombre: string;
-}
-
-interface Centro {
-    id: number;
-    nombre: string;
-    direccion?: string;
-}
-
-interface Grado {
-    id: number;
-    nombre: string;
-}
+interface Centro { id: number; nombre: string; }
+interface Empresa { id: number; nombre: string; }
+interface Grado { id: number; nombre: string; }
+interface Tutor { id: number; nombre: string; }
 
 type Role = 'alumno' | 'tutor_centro' | 'tutor_empresa' | 'empresa' | null;
 
 const Registro: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useUser();
+        const { } = useUser(); // Using hook for other things if needed, or remove it entirely
+    
+    // States
+    const [step, setStep] = useState(1);
     const [role, setRole] = useState<Role>(location.state?.role || null);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [selectedCentro, setSelectedCentro] = useState<string>('');
-    const [selectedGrado, setSelectedGrado] = useState<string>('');
-    const [nombre, setNombre] = useState('');
-    const [nombreEmpresa, setNombreEmpresa] = useState<string>('');
-    const [cif, setCif] = useState<string>('');
+    const [formData, setFormData] = useState({
+        nombre: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        selectedCentro: '',
+        selectedGrado: '',
+        selectedTutor: '',
+        selectedEmpresa: '',
+        nombreEmpresa: '',
+        cif: ''
+    });
+
     const [centros, setCentros] = useState<Centro[]>([]);
     const [empresas, setEmpresas] = useState<Empresa[]>([]);
-    const [selectedEmpresa, setSelectedEmpresa] = useState<string>('');
     const [gradosDisponibles, setGradosDisponibles] = useState<Grado[]>([]);
-
+    const [tutoresDisponibles, setTutoresDisponibles] = useState<Tutor[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    React.useEffect(() => {
-        const fetchCentros = async () => {
+    // Initial Data Fetch
+    useEffect(() => {
+        const fetchData = async () => {
             try {
-                const res = await axios.get('https://educonect.alwaysdata.net/api/public/centros');
-                setCentros(res.data);
+                const [centrosRes, empresasRes] = await Promise.all([
+                    api.get('/public/centros'),
+                    api.get('/public/empresas')
+                ]);
+                setCentros(centrosRes.data);
+                setEmpresas(empresasRes.data);
             } catch (err) {
-                console.error("Error fetching centros", err);
+                console.error("Error fetching initial data", err);
             }
         };
-        const fetchEmpresas = async () => {
-            try {
-                const res = await axios.get('https://educonect.alwaysdata.net/api/public/empresas');
-                setEmpresas(res.data);
-            } catch (err) {
-                console.error("Error fetching empresas", err);
-            }
-        };
-        fetchCentros();
-        fetchEmpresas();
+        fetchData();
     }, []);
 
-    interface Tutor {
-        id: number;
-        nombre: string;
-    }
-
-    const [selectedTutor, setSelectedTutor] = useState<string>('');
-    const [tutoresDisponibles, setTutoresDisponibles] = useState<Tutor[]>([]);
-
-    const handleCentroChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const centroId = e.target.value;
-        setSelectedCentro(centroId);
-        setSelectedGrado('');
-        setSelectedTutor('');
-
-        if (centroId) {
-            try {
-                const res = await axios.get(`https://educonect.alwaysdata.net/api/public/centros/${centroId}/grados`);
-                setGradosDisponibles(res.data);
-
-                const resTutores = await axios.get(`https://educonect.alwaysdata.net/api/public/centros/${centroId}/tutores`);
-                setTutoresDisponibles(resTutores.data);
-            } catch (err) {
-                console.error("Error fetching data", err);
-                setGradosDisponibles([]);
-                setTutoresDisponibles([]);
-            }
-        } else {
-            setGradosDisponibles([]);
-            setTutoresDisponibles([]);
+    // Fetch Grados and Tutores when Centro changes
+    useEffect(() => {
+        if (formData.selectedCentro) {
+            const fetchCentroDetails = async () => {
+                try {
+                    const [gradosRes, tutoresRes] = await Promise.all([
+                        api.get(`/public/centros/${formData.selectedCentro}/grados`),
+                        api.get(`/public/centros/${formData.selectedCentro}/tutores`)
+                    ]);
+                    setGradosDisponibles(gradosRes.data);
+                    setTutoresDisponibles(tutoresRes.data);
+                } catch (err) {
+                    console.error("Error fetching centro details", err);
+                }
+            };
+            fetchCentroDetails();
         }
+    }, [formData.selectedCentro]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.id]: e.target.value });
+    };
+
+    const handleRoleSelect = (selectedRole: Role) => {
+        setRole(selectedRole);
+        setStep(2);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
-
-        // Validar formato base de email en el cliente
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            setError("Por favor, introduce un correo electrónico válido.");
-            setLoading(false);
+        if (formData.password !== formData.confirmPassword) {
+            setError('Las contraseñas no coinciden');
             return;
         }
 
+        setLoading(true);
+        setError(null);
+
         try {
-            const data = {
-                nombre,
-                email,
-                password,
-                role,
-                centroId: selectedCentro ? parseInt(selectedCentro) : null,
-                grade: selectedGrado,
-                tutorId: selectedTutor ? parseInt(selectedTutor) : null,
-                nombreEmpresa: role === 'empresa' ? nombreEmpresa : null,
-                cif: role === 'empresa' ? cif : null,
-                empresaId: role === 'tutor_empresa' ? parseInt(selectedEmpresa) : null
+            // 1. Create User in Firebase
+            const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+            const firebaseUser = userCredential.user;
+
+            // 2. Register in our Backend
+            const backendData = {
+                nombre: formData.nombre,
+                email: formData.email,
+                password: formData.password,
+                role: role,
+                firebaseUid: firebaseUser.uid,
+                centroId: formData.selectedCentro ? parseInt(formData.selectedCentro) : null,
+                grade: formData.selectedGrado,
+                tutorId: formData.selectedTutor ? parseInt(formData.selectedTutor) : null,
+                nombreEmpresa: role === 'empresa' ? formData.nombreEmpresa : null,
+                cif: role === 'empresa' ? formData.cif : null,
+                empresaId: role === 'tutor_empresa' ? parseInt(formData.selectedEmpresa) : null
             };
 
-            // Asegúrate de que el backend Symfony esté corriendo en el puerto 8000
-            const response = await axios.post('https://educonect.alwaysdata.net/api/register', data);
+            const response = await api.post('/register', backendData);
 
             if (response.status === 201) {
                 const newUser = response.data.user;
                 if (newUser.isAprobado) {
-                    // Auto-login if approved
-                    login(newUser);
-                    navigate('/');
+                    navigate('/login', { state: { message: 'Registro exitoso. Por favor, inicia sesión.' } });
                 } else {
-                    // Show pending message if not approved
-                    let message = 'Registro completado. Tu cuenta está pendiente de aprobación.';
-                    if (role === 'alumno') {
-                        message = 'Registro completado. Tu cuenta está pendiente de aprobación por tu Tutor de Centro.';
-                    } else if (role === 'tutor_centro') {
-                        message = 'Registro completado. Tu cuenta está pendiente de aprobación por el Administrador del sistema.';
-                    } else if (role === 'tutor_empresa') {
-                        message = 'Registro completado. Tu cuenta está pendiente de aprobación por tu Empresa.';
-                    } else if (role === 'empresa') {
-                        message = 'Registro completado. La empresa ha sido registrada y está pendiente de aprobación por el Administrador.';
-                    }
-                    alert(message);
-                    navigate('/login');
+                    setStep(3); // Success step
                 }
             }
         } catch (err: any) {
-            setError(err.response?.data?.error || err.response?.data?.message || 'Error al conectar con el servidor. ¿Está el backend encendido?');
+            console.error(err);
+            setError(err.code === 'auth/email-already-in-use' 
+                ? 'Este correo ya está registrado.' 
+                : 'Hubo un error al procesar tu registro. Por favor, inténtalo de nuevo.');
         } finally {
             setLoading(false);
         }
     };
 
     const roles = [
-        { id: 'alumno', label: 'Alumno', icon: 'school' },
-        { id: 'tutor_centro', label: 'Tutor Centro', icon: 'psychology' },
-        { id: 'tutor_empresa', label: 'Tutor Empresa', icon: 'supervisor_account' },
-        { id: 'empresa', label: 'Empresa', icon: 'corporate_fare' },
+        { id: 'alumno', label: 'Alumno', icon: 'school', desc: 'Gestiona tus prácticas y dual' },
+        { id: 'tutor_centro', label: 'Tutor Centro', icon: 'psychology', desc: 'Coordina alumnos y empresas' },
+        { id: 'tutor_empresa', label: 'Tutor Empresa', icon: 'supervisor_account', desc: 'Supervisa alumnos en prácticas' },
+        { id: 'empresa', label: 'Empresa', icon: 'corporate_fare', desc: 'Gestiona convenios y ofertas' },
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-background-dark flex flex-col items-center justify-center p-6">
-            {/* Logo Section */}
-            <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => navigate('/')}>
-                <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 p-2 rounded text-white shadow-sm">
-                    <span className="material-symbols-outlined text-2xl">school</span>
-                </div>
-                <span className="text-xl font-bold tracking-tight text-gray-800 dark:text-white uppercase">EduConect</span>
+        <div className="min-h-screen bg-[#fafafa] dark:bg-zinc-950 flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden relative">
+            
+            {/* Fondo Premium Global */}
+            <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                <img 
+                    src="/home_bg_premium.png" 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                    style={{ filter: 'brightness(0.95) contrast(1.1)' }}
+                />
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
             </div>
 
-            <div className="w-full max-w-lg bg-white dark:bg-gray-800 border border-[#e0e0e0] dark:border-white/10 rounded p-8 shadow-sm">
+            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/50 overflow-hidden min-h-[750px] relative z-10">
+                
+                {/* Left Panel: Info & Progress (Glass Overhaul) */}
+                <div className="lg:col-span-4 bg-white/30 backdrop-blur-lg p-8 lg:p-12 border-r border-slate-200/50 flex flex-col justify-between relative overflow-hidden">
+                    <div className="relative z-10">
+                        <Logo size="md" variant="default" className="mb-12" />
 
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-3 animate-in fade-in duration-300">
-                        <span className="material-symbols-outlined">error</span>
-                        {error}
-                    </div>
-                )}
-
-                {!role ? (
-                    <div>
-                        <div className="mb-8 text-center">
-                            <h2 className="text-2xl font-bold tracking-tight mb-2 dark:text-white">Selecciona tu perfil</h2>
-                            <p className="text-gray-500 text-sm">¿Cómo vas a utilizar la plataforma?</p>
+                        <div className="space-y-8">
+                            <h2 className="text-4xl font-black leading-tight tracking-tighter text-slate-900 font-outfit">Únete al futuro de la <span className="text-[#4F46E5]">Formación.</span></h2>
+                            <p className="text-slate-600 font-bold leading-relaxed">Crea tu cuenta profesional en segundos y empieza a gestionar el talento del mañana.</p>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {roles.map((r) => (
-                                <button
-                                    key={r.id}
-                                    onClick={() => setRole(r.id as Role)}
-                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 dark:bg-white/5 border border-transparent hover:border-indigo-600/50 hover:bg-white dark:hover:bg-white/10 rounded transition-none group text-gray-700 dark:text-gray-300"
-                                >
-                                    <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white rounded flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-2xl">{r.icon}</span>
+                    </div>
+
+                    <div className="relative z-10 mt-12 lg:mt-0">
+                        <div className="space-y-6">
+                            {[1, 2, 3].map((s) => (
+                                <div key={s} className={`flex items-center gap-4 transition-all duration-500 ${step >= s ? 'opacity-100' : 'opacity-40'}`}>
+                                    <div className={`size-12 rounded-2xl flex items-center justify-center font-black text-sm border-2 shadow-sm transition-all ${step >= s ? 'bg-[#4F46E5] text-white border-[#4F46E5] scale-110 shadow-indigo-500/20' : 'bg-white/50 text-slate-400 border-white/60'}`}>
+                                        {s < step ? <span className="material-symbols-outlined text-xl font-black">check</span> : s}
                                     </div>
-                                    <span className="font-bold text-sm uppercase">{r.label}</span>
-                                </button>
+                                    <span className={`font-black text-xs uppercase tracking-[0.2em] ${step >= s ? 'text-[#4F46E5]' : 'text-slate-400'}`}>
+                                        {s === 1 ? 'Perfil' : s === 2 ? 'Detalles' : 'Finalizar'}
+                                    </span>
+                                </div>
                             ))}
                         </div>
                     </div>
-                ) : (
-                    <div>
-                        <button
-                            onClick={() => { setRole(null); setError(null); }}
-                            className="flex items-center gap-2 text-xs font-bold text-indigo-600 mb-6 hover:underline"
-                        >
-                            <span className="material-symbols-outlined text-sm">arrow_back</span>
-                            Cambiar tipo de cuenta
-                        </button>
 
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-bold tracking-tight mb-2 dark:text-white uppercase">Registro</h2>
-                            <p className="text-gray-500 text-sm">
-                                Creando cuenta como <span className="text-indigo-600 font-bold">{role.replace('_', ' ').toUpperCase()}</span>
-                            </p>
-                        </div>
+                    {/* Decorative Glass Blobs */}
+                    <div className="absolute -bottom-20 -right-20 size-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse"></div>
+                    <div className="absolute top-1/3 -left-32 size-64 bg-violet-500/10 rounded-full blur-3xl animate-pulse delay-700"></div>
+                </div>
 
-                        <form className="space-y-5" onSubmit={handleSubmit}>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Nombre Completo</label>
-                                <div className="relative group">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">person</span>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={nombre}
-                                        onChange={(e) => setNombre(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-indigo-600 transition-none font-medium text-sm"
-                                        placeholder="Nombre y Apellidos"
-                                    />
+                {/* Right Panel: Content */}
+                <div className="lg:col-span-8 p-8 lg:p-16 flex flex-col relative overflow-hidden bg-white/20 backdrop-blur-md">
+                    <AnimatePresence mode="wait">
+                        {step === 1 && (
+                            <motion.div 
+                                key="step1"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="flex flex-col h-full"
+                            >
+                                <div className="mb-10">
+                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2 font-outfit">Elige tu rol</h3>
+                                    <p className="text-slate-500 dark:text-zinc-400 font-bold">Selecciona cómo vas a utilizar la plataforma EduConect.</p>
                                 </div>
-                            </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Email profesional</label>
-                                <div className="relative group">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">mail</span>
-                                    <input
-                                        type="email"
-                                        required
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-indigo-600 transition-none font-medium text-sm"
-                                        placeholder="ejemplo@correo.com"
-                                    />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {roles.map((r) => (
+                                        <button
+                                            key={r.id}
+                                            onClick={() => handleRoleSelect(r.id as Role)}
+                                            className="group flex flex-col p-6 bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800 rounded-3xl hover:border-indigo-600 dark:hover:border-indigo-500 transition-all text-left relative overflow-hidden"
+                                        >
+                                            <div className="size-12 bg-white dark:bg-zinc-800 rounded-2xl shadow-sm flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform">
+                                                <span className="material-symbols-outlined text-2xl">{r.icon}</span>
+                                            </div>
+                                            <span className="font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">{r.label}</span>
+                                            <span className="text-xs text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">{r.desc}</span>
+                                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <span className="material-symbols-outlined text-indigo-600">arrow_forward</span>
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
-                            </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Contraseña</label>
-                                <div className="relative group">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">lock</span>
-                                    <input
-                                        type="password"
-                                        required
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-white/5 border border-[#e0e0e0] dark:border-white/10 rounded py-3 pl-12 pr-4 outline-none focus:border-indigo-600 transition-none font-medium text-sm"
-                                        placeholder="••••••••"
-                                    />
+                                <div className="mt-auto pt-10 text-center lg:text-left">
+                                    <p className="text-sm text-slate-500 font-medium">
+                                        ¿Ya tienes cuenta?{' '}
+                                        <button onClick={() => navigate('/login')} className="text-indigo-600 font-bold hover:underline">Inicia sesión aquí</button>
+                                    </p>
                                 </div>
-                            </div>
+                            </motion.div>
+                        )}
 
-                            {(role === 'alumno' || role === 'tutor_centro') && (
-                                <>
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Centro Educativo</label>
-                                        <div className="relative group">
-                                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">school</span>
-                                            <select
-                                                required
-                                                value={selectedCentro}
-                                                onChange={handleCentroChange}
-                                                className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer font-medium"
-                                            >
-                                                <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona un centro</option>
-                                                {centros.map(centro => (
-                                                    <option key={centro.id} value={centro.id} className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">
-                                                        {centro.nombre}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#616f89] pointer-events-none">expand_more</span>
-                                        </div>
+                        {step === 2 && (
+                            <motion.div 
+                                key="step2"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="flex flex-col"
+                            >
+                                <button 
+                                    onClick={() => setStep(1)}
+                                    className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-widest mb-8 hover:-translate-x-1 transition-transform"
+                                >
+                                    <span className="material-symbols-outlined text-sm">arrow_back</span>
+                                    Volver a Perfiles
+                                </button>
+
+                                <div className="mb-10">
+                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Casi listo...</h3>
+                                    <p className="text-slate-500 dark:text-zinc-400 font-medium">Completa tus datos profesionales para el perfil <span className="text-indigo-600 font-bold uppercase">{role?.replace('_', ' ')}</span>.</p>
+                                </div>
+
+                                {error && (
+                                    <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-2xl text-sm font-bold border border-red-100 flex items-center gap-3 animate-pulse">
+                                        <span className="material-symbols-outlined">error</span>
+                                        {error}
                                     </div>
+                                )}
+
+                                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                                    {/* Personal Info */}
+                                    <div className="sm:col-span-2 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Nombre Completo</label>
+                                        <input
+                                            type="text" id="nombre" required value={formData.nombre} onChange={handleInputChange}
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                            placeholder="Nombre y Apellidos"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Email Profesional</label>
+                                        <input
+                                            type="email" id="email" required value={formData.email} onChange={handleInputChange}
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                            placeholder="ejemplo@correo.com"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Contraseña</label>
+                                        <input
+                                            type="password" id="password" required value={formData.password} onChange={handleInputChange}
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+
+                                    {/* Role Specific Fields */}
+                                    {(role === 'alumno' || role === 'tutor_centro') && (
+                                        <div className="sm:col-span-2 space-y-1">
+                                            <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Centro Educativo</label>
+                                            <select
+                                                id="selectedCentro" required value={formData.selectedCentro} onChange={handleInputChange}
+                                                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium appearance-none"
+                                            >
+                                                <option value="">Selecciona un centro</option>
+                                                {centros.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     {role === 'alumno' && (
                                         <>
-                                            <div className="space-y-1.5 animate-in fade-in duration-300">
-                                                <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Grado formativo</label>
-                                                <div className="relative group">
-                                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">workspace_premium</span>
-                                                    <select
-                                                        required
-                                                        value={selectedGrado}
-                                                        onChange={(e) => setSelectedGrado(e.target.value)}
-                                                        disabled={!selectedCentro}
-                                                        className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                                                    >
-                                                        <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona un grado</option>
-                                                        {gradosDisponibles.map(grado => (
-                                                            <option key={grado.id} value={grado.id} className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">
-                                                                {grado.nombre}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#616f89] pointer-events-none">expand_more</span>
-                                                </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Grado Formativo</label>
+                                                <select
+                                                    id="selectedGrado" required value={formData.selectedGrado} onChange={handleInputChange}
+                                                    className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                                >
+                                                    <option value="">Selecciona grado</option>
+                                                    {gradosDisponibles.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+                                                </select>
                                             </div>
-
-                                            <div className="space-y-1.5 animate-in fade-in duration-300 mt-4">
-                                                <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Tutor de Centro</label>
-                                                <div className="relative group">
-                                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">person</span>
-                                                    <select
-                                                        required
-                                                        value={selectedTutor}
-                                                        onChange={(e) => setSelectedTutor(e.target.value)}
-                                                        disabled={!selectedCentro}
-                                                        className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                                                    >
-                                                        <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona tu tutor</option>
-                                                        {tutoresDisponibles.map(tutor => (
-                                                            <option key={tutor.id} value={tutor.id} className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">
-                                                                {tutor.nombre}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#616f89] pointer-events-none">expand_more</span>
-                                                </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Tutor Asignado</label>
+                                                <select
+                                                    id="selectedTutor" required value={formData.selectedTutor} onChange={handleInputChange}
+                                                    className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                                >
+                                                    <option value="">Selecciona tutor</option>
+                                                    {tutoresDisponibles.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                                                </select>
                                             </div>
                                         </>
                                     )}
-                                </>
-                            )}
 
-                            {role === 'tutor_empresa' && (
-                                <div className="space-y-1.5 animate-in fade-in duration-300">
-                                    <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Selecciona tu Empresa</label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">corporate_fare</span>
-                                        <select
-                                            required
-                                            value={selectedEmpresa}
-                                            onChange={(e) => setSelectedEmpresa(e.target.value)}
-                                            className="w-full bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-10 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all appearance-none cursor-pointer font-medium"
-                                        >
-                                            <option value="" className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">Selecciona empresa</option>
-                                            {empresas.map(emp => (
-                                                <option key={emp.id} value={emp.id} className="bg-white dark:bg-[#1e293b] text-[#111318] dark:text-white">
-                                                    {emp.nombre}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#616f89] pointer-events-none">expand_more</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mt-2 px-1">Nota: Deberás ser aprobado por la empresa antes de poder gestionar alumnos.</p>
-                                </div>
-                            )}
+                                    {role === 'tutor_empresa' && (
+                                        <div className="sm:col-span-2 space-y-1">
+                                            <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Empresa</label>
+                                            <select
+                                                id="selectedEmpresa" required value={formData.selectedEmpresa} onChange={handleInputChange}
+                                                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                            >
+                                                <option value="">Selecciona tu empresa</option>
+                                                {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
 
-                            {role === 'empresa' && (
-                                <div className="space-y-1.5 animate-in fade-in duration-300">
-                                    <label className="text-sm font-bold text-[#111318] dark:text-white ml-1">Nombre de la Empresa</label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">business</span>
+                                    {role === 'empresa' && (
+                                        <>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Nombre Fiscal</label>
+                                                <input
+                                                    type="text" id="nombreEmpresa" required value={formData.nombreEmpresa} onChange={handleInputChange}
+                                                    className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                                    placeholder="Ej: Tech Solutions S.L."
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">CIF / NIF</label>
+                                                <input
+                                                    type="text" id="cif" required value={formData.cif} onChange={handleInputChange}
+                                                    className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                                    placeholder="Ej: B12345678"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="space-y-1 sm:col-span-2">
+                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em] ml-1">Confirmar Contraseña</label>
                                         <input
-                                            type="text"
-                                            required
-                                            value={nombreEmpresa}
-                                            onChange={(e) => setNombreEmpresa(e.target.value)}
-                                            className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all font-medium"
-                                            placeholder="Nombre fiscal o comercial"
+                                            type="password" id="confirmPassword" required value={formData.confirmPassword} onChange={handleInputChange}
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all text-sm font-medium"
+                                            placeholder="Repite tu contraseña"
                                         />
                                     </div>
-                                    <div className="relative group mt-3">
-                                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#616f89] group-focus-within:text-indigo-600 transition-colors">badge</span>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={cif}
-                                            onChange={(e) => setCif(e.target.value)}
-                                            className="w-full bg-background-light dark:bg-white/5 border border-[#dbdfe6] dark:border-white/10 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all font-medium"
-                                            placeholder="CIF (ej: B12345678)"
-                                        />
-                                    </div>
-                                </div>
-                            )}
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white font-bold py-3.5 rounded shadow hover:bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/90 active:scale-95 transition-none flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                                    <button 
+                                        type="submit" 
+                                        disabled={loading}
+                                        className="sm:col-span-2 w-full py-4 bg-[#4F46E5] hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] disabled:opacity-50 mt-4 flex items-center justify-center gap-3"
+                                    >
+                                        {loading ? <span className="animate-spin material-symbols-outlined">progress_activity</span> : 'Crear mi cuenta'}
+                                        <span className="material-symbols-outlined text-[20px]">person_add</span>
+                                    </button>
+                                </form>
+                            </motion.div>
+                        )}
+
+                        {step === 3 && (
+                            <motion.div 
+                                key="step3"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex flex-col items-center justify-center h-full text-center py-10"
                             >
-                                {loading ? (
-                                    <>
-                                        <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                                        <span>Procesando...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>Confirmar registro</span>
-                                        <span className="material-symbols-outlined">check</span>
-                                    </>
-                                )}
-                            </button>
-                        </form>
-                    </div>
-                )}
-
-                <div className="text-center pt-8">
-                    <p className="text-sm text-[#616f89]">
-                        ¿Ya tienes cuenta?{' '}
-                        <button
-                            onClick={() => navigate('/login')}
-                            className="text-indigo-600 font-bold hover:underline"
-                        >
-                            Iniciar sesión
-                        </button>
-                    </p>
+                                <div className="size-24 bg-green-100 text-green-600 rounded-[2.5rem] flex items-center justify-center mb-8 animate-bounce">
+                                    <span className="material-symbols-outlined text-5xl">verified</span>
+                                </div>
+                                <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-4">¡Registro enviado!</h3>
+                                <div className="max-w-md space-y-4 text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">
+                                    <p>Tu cuenta ha sido creada en el sistema, pero requiere un paso final.</p>
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-800 text-sm">
+                                        {role === 'alumno' && 'Tu Tutor de Centro debe aprobar tu perfil para que puedas acceder.'}
+                                        {role === 'tutor_centro' && 'El Administrador del sistema revisará y aprobará tu cuenta.'}
+                                        {role === 'tutor_empresa' && 'La empresa seleccionada debe validar tu vinculación.'}
+                                        {role === 'empresa' && 'El Administrador revisará los datos fiscales de tu empresa.'}
+                                    </div>
+                                    <p className="text-xs pt-4">Te enviaremos un email cuando seas aprobado.</p>
+                                </div>
+                                <button 
+                                    onClick={() => navigate('/login')}
+                                    className="mt-10 px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-indigo-900 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
+                                >
+                                    Volver al Login
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
         </div>

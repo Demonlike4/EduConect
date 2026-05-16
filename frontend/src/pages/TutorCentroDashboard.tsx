@@ -13,13 +13,13 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Hooks de React para estado local y efectos secundarios
-import React, { useState, useEffect } from 'react';
-// useNavigate: redirige al usuario tras logout u otras acciones de navegación
-import { useNavigate } from 'react-router-dom';
-// axios: cliente HTTP para comunicarse con el backend Symfony
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from 'react';
+// api: cliente HTTP pre-configurado para comunicarse con el backend Symfony (incluye Bearer token)
+import api from '../lib/api';
 // useUser: contexto global con los datos del usuario autenticado y función de logout
 import { useUser } from '../context/UserContext';
+// Logo: Identidad visual centralizada
+import Logo from '../components/common/Logo';
 // ChatSystem: componente completo de mensajería interna entre roles
 import ChatSystem from '../components/ChatSystem';
 // SignaturePad: lienzo de firma digital (canvas) para el convenio FCT
@@ -31,9 +31,11 @@ import { AlumnosTable } from '../components/tutor/AlumnosTable';
 // NotificationPanel: panel desplegable de notificaciones en tiempo real del rol
 import NotificationPanel from '../components/NotificationPanel';
 import { apiUrl, assetUrl } from '../lib/urls.ts';
+import { CompanyLogo } from '../components/common/CompanyLogo';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { EmptyState } from '../components/EmptyState';
+import LogoutModal from '../components/common/LogoutModal';
 
 // ── Interfaz: datos de un alumno asignado al tutor ─────────────────────────
 // Devuelta por el endpoint POST /api/tutor/alumnos para el campo "alumnos[]"
@@ -181,10 +183,8 @@ const getOfferColor = (offer: any) => {
 // COMPONENTE PRINCIPAL: TutorCentroDashboard
 // ═══════════════════════════════════════════════════════════════════════════════
 const TutorCentroDashboard: React.FC = () => {
-    // Hook de navegación para redirecciones programáticas (ej: /login tras logout)
-    const navigate = useNavigate();
     // Datos del usuario autenticado (nombre, email, rol, centro) y función de cierre de sesión
-    const { user, logout } = useUser();
+    const { user } = useUser();
 
     // ── Estado: pestaña activa del panel lateral ────────────────────────────
     // Controla qué sección se muestra en el área de contenido principal
@@ -227,6 +227,19 @@ const TutorCentroDashboard: React.FC = () => {
     const [selectedDayInfo, setSelectedDayInfo] = useState<{ day: Date; entry: any; holiday: any } | null>(null);
     // Controla si el sidebar está visible en dispositivos móviles (hamburger menu)
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+    const [isNotifOpen, setIsNotifOpen] = useState(false);
+    const notifRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+                setIsNotifOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     // Nombre visible del tutor (fallback si no hay datos de perfil cargados aún)
     const displayName = user?.nombre || "Tutor Académico";
@@ -249,7 +262,7 @@ const TutorCentroDashboard: React.FC = () => {
         const fetchAlumnos = async () => {
             if (user?.email) {
                 try {
-                    const response = await axios.post(apiUrl('/api/tutor/alumnos'), {
+                    const response = await api.post('/tutor/alumnos', {
                         email: user.email
                     });
                     if (response.data.alumnos) {
@@ -279,7 +292,7 @@ const TutorCentroDashboard: React.FC = () => {
         const fetchNotificaciones = async () => {
             if (user?.email) {
                 try {
-                    const res = await axios.post(apiUrl('/api/notificaciones'), { email: user.email });
+                    const res = await api.post('/notificaciones', { email: user.email });
                     setNotificaciones(res.data.notificaciones || []);
                 } catch (e) {
                     console.error("Error fetching notifications", e);
@@ -303,7 +316,7 @@ const TutorCentroDashboard: React.FC = () => {
     // Endpoint: POST /api/notificaciones/{id}/read
     const handleReadNotification = async (id: number) => {
         try {
-            await axios.post(apiUrl(`/api/notificaciones/${id}/read`));
+            await api.post(`/notificaciones/${id}/read`);
             // Actualización optimista: marca localmente como leída sin re-fetch
             setNotificaciones(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
         } catch (e) { console.error(e); }
@@ -312,8 +325,7 @@ const TutorCentroDashboard: React.FC = () => {
     // ── handleLogout ────────────────────────────────────────────────────────
     // Cierra la sesión del tutor: limpia el contexto de usuario y redirige al login
     const handleLogout = () => {
-        logout();           // Limpia el UserContext y el token/almacenamiento local
-        navigate('/login'); // Redirige al formulario de inicio de sesión
+        setIsLogoutModalOpen(true);
     };
 
     // ── handleApproveAlumno ─────────────────────────────────────────────────
@@ -323,7 +335,7 @@ const TutorCentroDashboard: React.FC = () => {
     // Actualización local: marca isAprobado=true sin recargar toda la lista.
     const handleApproveAlumno = async (id: number) => {
         try {
-            await axios.post(apiUrl(`/api/tutor/alumno/${id}/approve`));
+            await api.post(`/tutor/alumno/${id}/approve`);
             alert("Alumno aprobado correctamente. Ahora podrá iniciar sesión.");
             // Actualiza el estado local para mover el alumno fuera de pendientesStudents
             setAlumnos(prev => prev.map(a => a.id === id ? { ...a, isAprobado: true } : a));
@@ -343,7 +355,7 @@ const TutorCentroDashboard: React.FC = () => {
         if (!confirm(`¿Estás seguro de que deseas eliminar al alumno ${nombre} de tu lista? Perderá el acceso y tendrá que solicitar nuevo tutor.`)) return;
 
         try {
-            const res = await axios.post(apiUrl(`/api/tutor/alumno/${id}/remove`));
+            const res = await api.post(`/tutor/alumno/${id}/remove`);
             if (res.data.status === 'success') {
                 // Elimina al alumno del estado local para actualizar la UI sin re-fetch
                 setAlumnos(prev => prev.filter(a => a.id !== id));
@@ -444,7 +456,7 @@ const TutorCentroDashboard: React.FC = () => {
         if (!alumnoToVal?.candidatura_id) return; // Guardia: debe existir candidatura
         setIsSubmitting(true); // Bloquear botón durante la petición
         try {
-            await axios.post(`https://educonect.alwaysdata.net/api/tutor/candidaturas/${alumnoToVal.candidatura_id}/validar`, {
+            await api.post(`/tutor/candidaturas/${alumnoToVal.candidatura_id}/validar`, {
                 firma: signature // Data URL de la firma capturada en el SignaturePad
             });
             alert("Prácticas validadas. El convenio ya está disponible.");
@@ -453,7 +465,7 @@ const TutorCentroDashboard: React.FC = () => {
             setValStep(1);
             setSignature(null);
             // Recargar la lista de alumnos para mostrar el nuevo estado 'VALIDADO'
-            const response = await axios.post('https://educonect.alwaysdata.net/api/tutor/alumnos', { email: user?.email });
+            const response = await api.post('/tutor/alumnos', { email: user?.email });
             if (response.data.alumnos) setAlumnos(response.data.alumnos);
         } catch (error: any) {
             console.error("Error validando:", error);
@@ -473,7 +485,7 @@ const TutorCentroDashboard: React.FC = () => {
     const fetchStudentDiario = async (candidaturaId: number) => {
         setLoadingDiario(true);
         try {
-        const res = await axios.get(apiUrl(`/api/diario/tutor/candidatura/${candidaturaId}`));
+        const res = await api.get(`/diario/tutor/candidatura/${candidaturaId}`);
             setDiarioEntries(res.data.actividades || []); // Guardar entradas del diario
         } catch (error) {
             console.error("Error fetching student diario:", error);
@@ -491,7 +503,7 @@ const TutorCentroDashboard: React.FC = () => {
         // Recuperar el comentario del tutor para esta entrada (puede estar vacío)
         const observaciones = bitacoraFeedback[diarioId] || '';
         try {
-        await axios.post(apiUrl(`/api/diario/tutor/validar/${diarioId}`), {
+        await api.post(`/diario/tutor/validar/${diarioId}`, {
                 estado,        // 'APROBADO' o 'RECHAZADO'
                 observaciones  // Feedback textual del tutor (opcional)
             });
@@ -569,7 +581,7 @@ const TutorCentroDashboard: React.FC = () => {
         setModalTab('info');        // Resetear siempre a la pestaña de información general
         setDiarioEntries([]);       // Limpiar entradas de diario de consultas anteriores
         try {
-            const res = await axios.get(apiUrl(`/api/tutor/alumno/${alumnoId}`));
+            const res = await api.get(`/tutor/alumno/${alumnoId}`);
             setStudentDetail(res.data);
             // Solo cargar el diario si el convenio ya ha sido validado (estado VALIDADO)
             if (res.data.candidatura?.id && res.data.candidatura?.estado === 'VALIDADO') {
@@ -600,7 +612,7 @@ const TutorCentroDashboard: React.FC = () => {
         setProfileLoading(true);              // Mostrar spinner dentro del modal de perfil
         setIsCompanyProfileModalOpen(true);   // Abrir el modal antes de tener los datos
         try {
-            const response = await axios.post(apiUrl('/api/empresa/profile'), { email });
+            const response = await api.post('/empresa/profile', { email });
             setCompanyProfileData(response.data); // Guardar datos del perfil para renderizar
         } catch (error) {
             console.error("Error fetching company profile", error);
@@ -632,21 +644,12 @@ const TutorCentroDashboard: React.FC = () => {
             setIsSidebarOpen={setIsSidebarOpen}
             sidebarWidthClass="w-80"
             sidebarClassName="bg-zinc-950 text-white"
-            zIndexSidebarClass="z-[70]"
             sidebar={
                 <>
                 {/* Logotipo EduConect con barra de acento superior en degradado */}
-                <div className="p-8 border-b border-white/5 bg-zinc-950 relative overflow-hidden">
+                <div className="p-6 lg:p-8 border-b border-white/5 bg-zinc-950 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500"></div>
-                    <div className="flex items-center gap-4">
-                        <div className="size-12 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20 rotate-3 group-hover:rotate-0 transition-transform duration-500 ring-4 ring-indigo-600/10">
-                            <span className="material-symbols-outlined text-white text-3xl font-light">school</span>
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-black tracking-tighter uppercase leading-none">EduConect</h1>
-                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mt-1.5 opacity-80">Portal de Tutores</p>
-                        </div>
-                    </div>
+                    <Logo variant="white" showTagline tagline="Portal de Tutores" />
                 </div>
 
                 {/* Menú de navegación: cada item mapea a una pestaña del contenido principal.
@@ -667,6 +670,7 @@ const TutorCentroDashboard: React.FC = () => {
                             onClick={() => {
                                 if (item.id === 'guias') setIsGuideModalOpen(true);
                                 else setActiveTab(item.id as any);
+                                setIsSidebarOpen(false); // Cierra el menú hamburguesa en móvil al pinchar
                             }}
                             className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 group/item ${activeTab === item.id ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white shadow-lg shadow-indigo-600/20' : 'text-zinc-400 hover:bg-white/5'}`}
                         >
@@ -688,7 +692,7 @@ const TutorCentroDashboard: React.FC = () => {
                 </nav>
 
                 {/* Bottom Profile */}
-                <div className="p-8 border-t border-white/5 bg-white/5 backdrop-blur-md">
+                <div className="p-6 lg:p-8 border-t border-white/5 bg-white/5 backdrop-blur-md">
                     <div className="flex items-center gap-4 group/profile cursor-pointer">
                         <div className="size-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 font-black border border-indigo-500/20 group-hover/profile:scale-110 transition-transform overflow-hidden">
                             {user?.foto ? (
@@ -709,7 +713,7 @@ const TutorCentroDashboard: React.FC = () => {
                 </>
             }
             header={
-                <header className="h-20 lg:h-24 bg-white/70 backdrop-blur-2xl border-b border-zinc-100 flex items-center justify-between px-6 lg:px-12 sticky top-0 z-20 transition-all">
+                <header className="py-4 lg:py-0 h-auto lg:h-24 bg-white/70 backdrop-blur-2xl border-b border-zinc-100 flex items-center justify-between px-6 lg:px-12 relative lg:sticky top-0 z-20 transition-all">
                     <div className="flex items-center gap-4">
                         <button
                             className="lg:hidden p-2 text-zinc-500 hover:text-indigo-600 transition-colors"
@@ -734,8 +738,11 @@ const TutorCentroDashboard: React.FC = () => {
                         </div>
 
                         {/* Notifications Dropdown */}
-                        <div className="relative group/notif">
-                            <button className="size-12 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 transition-all cursor-pointer relative">
+                        <div className="relative" ref={notifRef}>
+                            <button 
+                                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                                className="size-12 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 transition-all cursor-pointer relative"
+                            >
                                 <span className="material-symbols-outlined text-[24px]">notifications</span>
                                 {notificaciones.filter(n => !n.leida).length > 0 && (
                                     <span className="absolute top-2 right-2 size-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 border-2 border-white dark:border-zinc-800 rounded-full flex items-center justify-center text-[8px] font-black text-white">
@@ -744,7 +751,7 @@ const TutorCentroDashboard: React.FC = () => {
                                 )}
                             </button>
 
-                            <div className="absolute right-0 top-full mt-4 w-[calc(100vw-2rem)] sm:w-80 lg:w-96 opacity-0 translate-y-4 pointer-events-none group-hover/notif:opacity-100 group-hover/notif:translate-y-0 group-hover/notif:pointer-events-auto transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10 z-[100]">
+                            <div className={`fixed left-4 right-4 top-[80px] sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-4 w-auto sm:w-80 lg:w-96 transition-all duration-300 z-[100] ${isNotifOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                                 <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-2xl shadow-black/20 border border-zinc-100 dark:border-zinc-800 overflow-hidden max-h-[500px] flex flex-col">
                                     <NotificationPanel
                                         role="TUTOR_CENTRO"
@@ -803,13 +810,13 @@ const TutorCentroDashboard: React.FC = () => {
                                         </thead>
                                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50 dark:text-zinc-200">
                                             {pendingStudents.length === 0 ? (
-                                                <div className="py-20">
+                                                <tr><td colSpan={4} className="py-20">
                                                     <EmptyState 
                                                         icon="group" 
                                                         title="Panel Vacío" 
-                                                        description="Aún no hay alumnos asignados a tu tutoría." 
+                                                        description="Aún no hay solicitudes de inscripción pendientes." 
                                                     />
-                                                </div>
+                                                </td></tr>
                                             ) :
                                                 pendingStudents.map((alu) => (
                                                     <tr key={alu.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors group">
@@ -863,7 +870,7 @@ const TutorCentroDashboard: React.FC = () => {
                                 <DashboardMetrics stats={stats} />
 
                                 {/* Welcome / Quick Actions */}
-                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 shadow-sm">
                                     <div className="flex items-center gap-4 mb-8">
                                         <div className="size-14 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                             <span className="material-symbols-outlined text-[28px]">rocket_launch</span>
@@ -923,7 +930,7 @@ const TutorCentroDashboard: React.FC = () => {
                                     </div>
                                     <div className="space-y-3">
                                         {notificaciones.filter(n => !n.leida).length === 0 ? (
-                                            <div className="p-8 text-center text-zinc-400 dark:text-zinc-500 border-2 border-dashed border-zinc-100 dark:border-zinc-800/50 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/20">
+                                            <div className="p-4 sm:p-6 lg:p-8 text-center text-zinc-400 dark:text-zinc-500 border-2 border-dashed border-zinc-100 dark:border-zinc-800/50 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/20">
                                                 <div className="size-12 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
                                                     <span className="material-symbols-outlined text-2xl text-zinc-300 dark:text-zinc-600">notifications_off</span>
                                                 </div>
@@ -1024,7 +1031,7 @@ const TutorCentroDashboard: React.FC = () => {
                     {activeTab === 'alumnos' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                             {loading ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     <SkeletonCard count={3} />
                                 </div>
                             ) : alumnos.filter(a => a.isAprobado !== false).length === 0 ? (
@@ -1069,11 +1076,11 @@ const TutorCentroDashboard: React.FC = () => {
                     {activeTab === 'empresas' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">
                             <div className="bg-white dark:bg-background-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                                <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                                <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 dark:border-slate-800">
                                     <h3 className="text-xl font-black dark:text-white">Empresas Colaboradoras</h3>
                                     <p className="text-sm text-slate-500 mt-1">Empresas con alumnos asignados de tu centro educativo</p>
                                 </div>
-                                <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {empresas.length === 0 ? (
                                         <div className="col-span-3 py-20 text-center">
                                             <span className="material-symbols-outlined text-6xl text-slate-200 dark:text-slate-800 mb-4">corporate_fare</span>
@@ -1082,21 +1089,13 @@ const TutorCentroDashboard: React.FC = () => {
                                     ) : empresas.map((emp, i) => (
                                         <div key={i} className="group p-6 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-indigo-600/30 transition-all hover:shadow-xl hover:shadow-indigo-600/5">
                                             <div className="flex justify-between items-start mb-6">
-                                                <div className="size-16 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-600 border border-slate-100 dark:border-slate-800 shadow-sm transition-transform group-hover:scale-110 overflow-hidden">
-                                                    {emp.logo ? (
-                                                        <img
-                                                            src={assetUrl(emp.logo)}
-                                                            alt={emp.nombre}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${emp.nombre}&background=6366f1&color=fff&size=200`;
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <span className="material-symbols-outlined text-3xl">business</span>
-                                                    )}
+                                                <div className="transition-transform group-hover:scale-110">
+                                                    <CompanyLogo 
+                                                        logoPath={assetUrl(`/uploads/logos/${String(emp.logo).split('/').pop() || ''}`)}
+                                                        companyName={emp.nombre || ''}
+                                                    />
                                                 </div>
-                                                <span className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 text-indigo-600 text-[10px] font-black rounded-full uppercase">
+                                                <span className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white text-[10px] font-black rounded-full uppercase shadow-lg shadow-indigo-500/25">
                                                     {emp.alumnosCount} {emp.alumnosCount === 1 ? 'Alumno' : 'Alumnos'}
                                                 </span>
                                             </div>
@@ -1114,7 +1113,7 @@ const TutorCentroDashboard: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3 mt-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
                                                 <button
                                                     onClick={() => handleOpenCompanyModal(emp)}
                                                     className="py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all flex items-center justify-center gap-2">
@@ -1150,8 +1149,8 @@ const TutorCentroDashboard: React.FC = () => {
                                     </h3>
                                     <p className="text-sm text-slate-500 mt-1">Gestión de convenios generados para alumnos con prácticas validadas.</p>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
+                                <div className="overflow-x-auto custom-scrollbar-horizontal">
+                                    <table className="w-full text-left min-w-[800px]">
                                         <thead>
                                             <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
                                                 <th className="px-6 py-4">Alumno</th>
@@ -1175,8 +1174,12 @@ const TutorCentroDashboard: React.FC = () => {
                                                     <tr key={alu.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="size-8 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
-                                                                    {alu.nombre.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                                <div className="size-8 bg-indigo-100 dark:bg-indigo-500/20 rounded-full flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 overflow-hidden">
+                                                                    {alu.foto ? (
+                                                                        <img src={assetUrl(`/uploads/fotos/${alu.foto}`)} className="w-full h-full object-cover" alt="Perfil" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                                                    ) : (
+                                                                        alu.nombre.split(' ').map((n: string) => n[0]).join('').substring(0, 2)
+                                                                    )}
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-sm font-medium dark:text-white">{alu.nombre}</p>
@@ -1227,7 +1230,7 @@ const TutorCentroDashboard: React.FC = () => {
                 {isValModalOpen && alumnoToVal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
                         <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
-                            <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-linear-to-r from-emerald-500 to-teal-600 text-white">
+                            <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 dark:border-slate-800 bg-linear-to-r from-emerald-500 to-teal-600 text-white">
                                 <h3 className="text-2xl font-black flex items-center gap-3">
                                     <span className="material-symbols-outlined text-3xl">assignment_turned_in</span>
                                     {valStep === 1 ? 'Validar Proyecto' : 'Firma Digital'}
@@ -1237,10 +1240,10 @@ const TutorCentroDashboard: React.FC = () => {
                                 </p>
                             </div>
 
-                            <div className="p-8 space-y-6">
+                            <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                                 {valStep === 1 ? (
                                     <>
-                                        <div className="grid grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             <div className="space-y-1">
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estudiante</p>
                                                 <p className="font-bold dark:text-white">{alumnoToVal.nombre}</p>
@@ -1327,17 +1330,24 @@ const TutorCentroDashboard: React.FC = () => {
                                 </div>
                             ) : studentDetail && (
                                 <>
-                                    {/* Header Premium */}
-                                    <div className="relative p-6 lg:p-8 overflow-hidden shrink-0">
-                                        {/* Background Decor */}
-                                        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-                                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl"></div>
+                                    {/* Cabecera Suave (Header Gradient) - Premium & Accessible */}
+                                    <div className="relative p-6 lg:p-12 overflow-hidden shrink-0 bg-gradient-to-r from-indigo-50 to-pink-50 border-b border-slate-100">
+                                        {/* Decoraciones sutiles */}
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-200/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+                                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-200/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl"></div>
 
-                                        <div className="relative flex justify-between items-start gap-4">
-                                            <div className="flex gap-4 lg:gap-8 items-center">
-                                                <div className="relative group/photo">
+                                        <button
+                                            onClick={() => setIsDetailModalOpen(false)}
+                                            className="absolute top-6 right-6 z-50 size-10 rounded-2xl bg-white/90 backdrop-blur-md hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition-all border border-slate-200 shadow-xl group hover:rotate-90 shrink-0"
+                                        >
+                                            <span className="material-symbols-outlined text-xl">close</span>
+                                        </button>
+
+                                        <div className="relative flex flex-col sm:flex-row justify-between items-center sm:items-start gap-6 sm:gap-4 pt-2 sm:pt-0 pr-14 sm:pr-14">
+                                            <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-start text-center sm:text-left">
+                                                <div className="relative group/photo shrink-0">
                                                     <div className="absolute -inset-1.5 bg-linear-to-r from-indigo-600 to-purple-600 rounded-[2rem] blur opacity-20 group-hover/photo:opacity-40 transition duration-1000"></div>
-                                                    <div className="relative size-28 rounded-3xl bg-white dark:bg-zinc-800 flex items-center justify-center text-indigo-600 text-4xl font-black shadow-2xl border border-white dark:border-zinc-700 overflow-hidden">
+                                                    <div className="relative size-24 sm:size-28 rounded-3xl bg-white dark:bg-zinc-800 flex items-center justify-center text-indigo-600 text-3xl sm:text-4xl font-black shadow-2xl border border-white dark:border-zinc-700 overflow-hidden">
                                                         {studentDetail.foto ? (
                                                             <img src={assetUrl(`/uploads/fotos/${studentDetail.foto}`)} className="w-full h-full object-cover" alt="Perfil" />
                                                         ) : (
@@ -1345,17 +1355,17 @@ const TutorCentroDashboard: React.FC = () => {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <div className="flex flex-wrap items-center gap-2 lg:gap-3 mb-1">
-                                                        <h3 className="text-xl lg:text-3xl font-black dark:text-white tracking-tight">{studentDetail.nombre}</h3>
-                                                        <span className="px-2 py-0.5 lg:px-2.5 lg:py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] lg:text-[10px] font-semibold tracking-wide rounded-full border border-emerald-500/20">
-                                                            Activo 2026/27
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 lg:gap-3 mb-2 sm:mb-1 items-center">
+                                                        <h3 className="text-xl sm:text-2xl lg:text-4xl font-black text-slate-900 tracking-tight uppercase leading-none truncate max-w-[280px] sm:max-w-none">{studentDetail.nombre}</h3>
+                                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[8px] sm:text-[9px] lg:text-[10px] font-bold tracking-wide rounded-full border border-emerald-200 shadow-sm whitespace-nowrap">
+                                                            VIGENTE 2026/27
                                                         </span>
                                                     </div>
-                                                    <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm lg:text-base uppercase tracking-wider mb-2 lg:mb-3">{studentDetail.grado}</p>
-                                                    <div className="flex flex-wrap items-center gap-3 lg:gap-4 text-zinc-500 dark:zinc-400 text-[10px] lg:text-sm">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="material-symbols-outlined text-[16px] lg:text-[18px] opacity-70">mail</span>
+                                                    <p className="text-indigo-600/80 font-black text-[10px] sm:text-sm lg:text-base uppercase tracking-[0.2em] mb-4 truncate max-w-[260px] sm:max-w-none mx-auto sm:mx-0">{studentDetail.grado || '2º DAW'}</p>
+                                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 lg:gap-4 text-zinc-500 dark:zinc-400 text-[9px] sm:text-[10px] lg:text-sm">
+                                                        <div className="flex items-center gap-1.5 bg-white/50 px-3 py-1 rounded-full border border-slate-100 sm:bg-transparent sm:p-0 sm:border-0">
+                                                            <span className="material-symbols-outlined text-[14px] lg:text-[18px] opacity-70">mail</span>
                                                             {studentDetail.email}
                                                         </div>
                                                         <div className="hidden min-[450px]:flex items-center gap-2 border-l border-zinc-200 dark:border-zinc-700 pl-3 lg:pl-4 py-0.5">
@@ -1365,12 +1375,6 @@ const TutorCentroDashboard: React.FC = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => setIsDetailModalOpen(false)}
-                                                className="z-10 size-10 lg:size-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center justify-center transition-all group hover:rotate-90 shrink-0"
-                                            >
-                                                <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">close</span>
-                                            </button>
                                         </div>
                                     </div>
 
@@ -1541,7 +1545,7 @@ const TutorCentroDashboard: React.FC = () => {
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="grid grid-cols-2 gap-3 mt-6 lg:mt-8 relative">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 lg:mt-8 relative">
                                                                     <div className="flex items-center gap-3 lg:gap-4 p-4 lg:p-5 bg-white/5 rounded-[22px] border border-white/10 hover:bg-white/10 transition-colors">
                                                                         <div className="size-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
                                                                             <span className="material-symbols-outlined text-[20px]">timelapse</span>
@@ -1580,16 +1584,23 @@ const TutorCentroDashboard: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                                                <div className="flex justify-between items-end">
-                                                    <div>
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
+                                                    <div className="w-full">
                                                         <h4 className="font-black text-zinc-400 text-[10px] uppercase tracking-[0.2em] mb-1">Bitácora de Seguimiento</h4>
                                                         <p className="text-zinc-500 dark:text-zinc-400 text-sm">Registro detallado de actividades y competencias adquiridas</p>
                                                     </div>
-                                                    <div className="relative group">
+                                                    <div className="relative group w-full sm:w-auto">
                                                         <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 blur-sm opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                                        <div className="relative px-5 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl text-zinc-900 dark:text-white text-xs font-black shadow-sm flex items-center gap-3">
-                                                            <span className="material-symbols-outlined text-indigo-600">analytics</span>
-                                                            AVANCE FCT: {diarioEntries.filter(e => e.estado === 'APROBADO').reduce((acc, curr: any) => acc + curr.horas, 0)}h / 370h
+                                                        <div className="relative px-6 py-4 bg-white border border-slate-100 rounded-3xl text-slate-900 text-[10px] sm:text-xs font-black shadow-sm flex items-center justify-around sm:justify-start gap-4">
+                                                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                                                <span className="material-symbols-outlined text-indigo-600">analytics</span>
+                                                                HORAS FCT: {diarioEntries.filter(e => e.estado === 'APROBADO').reduce((acc, curr: any) => acc + curr.horas, 0)}h / 370h
+                                                            </div>
+                                                            <div className="h-4 w-px bg-slate-200 mx-1"></div>
+                                                            <div className="flex items-center gap-2 text-red-500 whitespace-nowrap">
+                                                                <span className="material-symbols-outlined text-sm">event_busy</span>
+                                                                FALTAS: 0
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1602,7 +1613,7 @@ const TutorCentroDashboard: React.FC = () => {
                                                 ) : (
                                                     <div className="space-y-10">
                                                         <div className="bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden flex flex-col">
-                                                            <div className="p-8 bg-linear-to-r from-indigo-800 via-indigo-600 to-indigo-900 text-white flex items-center justify-between">
+                                                            <div className="p-4 sm:p-6 lg:p-8 bg-linear-to-r from-indigo-800 via-indigo-600 to-indigo-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
                                                                 <div className="flex items-center gap-6">
                                                                     <div className="flex items-center gap-2">
                                                                         <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="size-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 hover:scale-110 active:scale-90 transition-all border border-white/10 group">
@@ -1726,7 +1737,7 @@ const TutorCentroDashboard: React.FC = () => {
                                                                     <div
                                                                         key={entry.id}
                                                                         id={`entry-${entry.id}`}
-                                                                        className="bg-white dark:bg-zinc-800 p-8 rounded-[32px] border border-zinc-200 dark:border-zinc-800 group hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10 scroll-mt-6"
+                                                                        className="bg-white dark:bg-zinc-800 p-4 sm:p-6 lg:p-8 rounded-[32px] border border-zinc-200 dark:border-zinc-800 group hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10 scroll-mt-6"
                                                                     >
                                                                         <div className="flex flex-col md:flex-row justify-between gap-6">
                                                                             <div className="flex-1 space-y-4">
@@ -1859,13 +1870,12 @@ const TutorCentroDashboard: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Logo de Empresa (Miniatura flotante) */}
+                                {/* Logo de Empresa (Miniatura flotante - reposicionado para evitar solapamiento) */}
                                 {studentDetail.candidatura.empresa_logo && (
-                                    <div className="absolute top-8 right-8 size-16 lg:size-20 bg-white rounded-3xl p-3 shadow-2xl border border-white/20 flex items-center justify-center overflow-hidden group-hover:rotate-12 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10">
-                                        <img
-                                            src={assetUrl(`/uploads/logos/${studentDetail.candidatura.empresa_logo}`)}
-                                            className="w-full h-full object-contain"
-                                            alt="Empresa Logo"
+                                    <div className="absolute bottom-8 left-8 z-20 transition-all duration-300 hover:scale-110">
+                                        <CompanyLogo 
+                                            logoPath={assetUrl(`/uploads/logos/${String(studentDetail.candidatura.empresa_logo).split('/').pop() || ''}`)}
+                                            companyName={studentDetail.candidatura.empresa || ''}
                                         />
                                     </div>
                                 )}
@@ -1915,7 +1925,7 @@ const TutorCentroDashboard: React.FC = () => {
 
                                 {/* Info Grid: Ubicación y Jornada */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                    <div className="p-8 rounded-[40px] bg-indigo-50/40 dark:bg-indigo-500/5 border border-indigo-100/30 flex flex-col items-center text-center gap-4 transition-all hover:bg-white dark:hover:bg-zinc-800 shadow-sm hover:shadow-xl group">
+                                    <div className="p-4 sm:p-6 lg:p-8 rounded-[40px] bg-indigo-50/40 dark:bg-indigo-500/5 border border-indigo-100/30 flex flex-col items-center text-center gap-4 transition-all hover:bg-white dark:hover:bg-zinc-800 shadow-sm hover:shadow-xl group">
                                         <div className="size-14 rounded-2xl bg-white dark:bg-zinc-800 shadow-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
                                             <span className="material-symbols-outlined text-2xl">schedule</span>
                                         </div>
@@ -1924,7 +1934,7 @@ const TutorCentroDashboard: React.FC = () => {
                                             <p className="text-sm lg:text-base font-black text-zinc-800 dark:text-zinc-100 uppercase leading-none">{studentDetail.candidatura.horario || '08:00 - 15:00'}</p>
                                         </div>
                                     </div>
-                                    <div className="p-8 rounded-[40px] bg-purple-50/40 dark:bg-purple-500/5 border border-purple-100/30 flex flex-col items-center text-center gap-4 transition-all hover:bg-white dark:hover:bg-zinc-800 shadow-sm hover:shadow-xl group">
+                                    <div className="p-4 sm:p-6 lg:p-8 rounded-[40px] bg-purple-50/40 dark:bg-purple-500/5 border border-purple-100/30 flex flex-col items-center text-center gap-4 transition-all hover:bg-white dark:hover:bg-zinc-800 shadow-sm hover:shadow-xl group">
                                         <div className="size-14 rounded-2xl bg-white dark:bg-zinc-800 shadow-xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
                                             <span className="material-symbols-outlined text-2xl">event_repeat</span>
                                         </div>
@@ -1963,7 +1973,7 @@ const TutorCentroDashboard: React.FC = () => {
                     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
                         <div className="bg-white dark:bg-slate-900 rounded-[40px] w-full max-w-3xl max-h-[80vh] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-500">
                             {/* Modal Header */}
-                            <div className="p-8 lg:p-10 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/30">
+                            <div className="p-4 sm:p-6 lg:p-10 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/30">
                                 <div>
                                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Alumnado en {selectedCompany.nombre}</h2>
                                     <p className="text-xs text-slate-500 font-semibold tracking-wide mt-1">Supervisión de prácticas por empresa</p>
@@ -1999,8 +2009,23 @@ const TutorCentroDashboard: React.FC = () => {
                                                         <tr key={alu.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                                             <td className="px-8 py-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="size-8 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
-                                                                        {alu.nombre.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                                    <div className="size-8 rounded-full flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:scale-[1.05] transition-transform">
+                                                                        {alu.foto ? (
+                                                                            <img
+                                                                                src={assetUrl(alu.foto.startsWith('/uploads') ? alu.foto : `/uploads/fotos/${alu.foto}`)}
+                                                                                alt={alu.nombre}
+                                                                                className="w-full h-full object-cover"
+                                                                                onError={(e) => {
+                                                                                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(alu.nombre)}&background=4f46e5&color=fff&size=100`;
+                                                                                }}
+                                                                            />
+                                                                        ) : (
+                                                                            <img
+                                                                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alu.nombre)}&background=4f46e5&color=fff&size=100`}
+                                                                                alt={alu.nombre}
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                        )}
                                                                     </div>
                                                                     <div>
                                                                         <p className="font-bold text-sm dark:text-white">{alu.nombre}</p>
@@ -2120,7 +2145,7 @@ const TutorCentroDashboard: React.FC = () => {
                                 </div>
 
                                 {selectedDayInfo.holiday ? (
-                                    <div className="p-8 bg-red-100 dark:bg-red-500/10 rounded-[32px] border border-red-200 dark:border-red-500/20 text-center space-y-4">
+                                    <div className="p-4 sm:p-6 lg:p-8 bg-red-100 dark:bg-red-500/10 rounded-[32px] border border-red-200 dark:border-red-500/20 text-center space-y-4">
                                         <span className="material-symbols-outlined text-red-500 text-5xl">event_busy</span>
                                         <div>
                                             <p className="text-red-600 dark:text-red-400 font-black text-xl uppercase tracking-tight italic">
@@ -2131,7 +2156,7 @@ const TutorCentroDashboard: React.FC = () => {
                                     </div>
                                 ) : selectedDayInfo.entry ? (
                                     <div className="space-y-8">
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                                                 <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Horas Totales</p>
                                                 <p className="text-2xl font-black text-zinc-900 dark:text-white">{selectedDayInfo.entry.horas}h <span className="text-sm font-bold text-indigo-500">Laboradas</span></p>
@@ -2176,7 +2201,7 @@ const TutorCentroDashboard: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                            <div className="p-8 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                            <div className="p-4 sm:p-6 lg:p-8 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
                                 <button
                                     onClick={() => setSelectedDayInfo(null)}
                                     className="px-10 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl text-xs font-semibold tracking-wide hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
@@ -2197,7 +2222,7 @@ const TutorCentroDashboard: React.FC = () => {
                 {isGuideModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[100] p-4 animate-in fade-in duration-300">
                         <div className="bg-white dark:bg-background-dark rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-800">
-                            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30">
+                            <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30">
                                 <div>
                                     <div className="flex items-center gap-2 text-white/80 text-sm font-bold mb-2 uppercase tracking-wider">
                                         <span className="material-symbols-outlined text-[18px]">menu_book</span>
@@ -2212,7 +2237,7 @@ const TutorCentroDashboard: React.FC = () => {
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
-                            <div className="p-8 max-h-[60vh] overflow-y-auto space-y-8">
+                            <div className="p-4 sm:p-6 lg:p-8 max-h-[60vh] overflow-y-auto space-y-8">
                                 <div className="space-y-4">
                                     <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
                                         <span className="material-symbols-outlined text-indigo-500">app_registration</span>
@@ -2278,25 +2303,17 @@ const TutorCentroDashboard: React.FC = () => {
                                 </div>
                             ) : companyProfileData && (
                                 <>
-                                    <div className="relative p-8 lg:p-12 overflow-hidden shrink-0 bg-slate-50 dark:bg-slate-800/30">
+                                    <div className="relative p-6 lg:p-12 overflow-hidden shrink-0 bg-slate-50 dark:bg-slate-800/30">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
                                         <div className="relative flex justify-between items-start">
                                             <div className="flex gap-8 items-center">
                                                 <div className="relative group">
                                                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                                    <div className="size-24 lg:size-32 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden relative flex items-center justify-center">
-                                                        {companyProfileData.logo ? (
-                                                            <img
-                                                                src={`https://educonect.alwaysdata.net${companyProfileData.logo}`}
-                                                                alt={companyProfileData.nombre}
-                                                                className="w-full h-full object-cover"
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + companyProfileData.nombre + '&background=6366f1&color=fff';
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <span className="material-symbols-outlined text-4xl text-slate-300">business</span>
-                                                        )}
+                                                    <div className="relative group">
+                                                        <CompanyLogo 
+                                                            logoPath={assetUrl(`/uploads/logos/${String(companyProfileData.logo).split('/').pop() || ''}`)}
+                                                            companyName={companyProfileData.nombre || ''}
+                                                        />
                                                     </div>
                                                 </div>
                                                 <div>
@@ -2333,7 +2350,7 @@ const TutorCentroDashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto p-8 lg:p-12 custom-scrollbar">
+                                    <div className="flex-1 overflow-y-auto p-6 lg:p-12 custom-scrollbar">
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
                                             <div className="md:col-span-12 space-y-12">
                                                 <section>
@@ -2385,7 +2402,7 @@ const TutorCentroDashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
+                                    <div className="p-4 sm:p-6 lg:p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
                                         <div className="flex gap-4">
                                             {companyProfileData.linkedin && (
                                                 <a href={companyProfileData.linkedin} target="_blank" rel="noopener noreferrer" className="size-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500 hover:text-[#0077b5] transition-colors">
@@ -2410,6 +2427,7 @@ const TutorCentroDashboard: React.FC = () => {
                         </div>
                     </div>
                 )}
+            <LogoutModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} />
         </DashboardLayout>
     );
 };

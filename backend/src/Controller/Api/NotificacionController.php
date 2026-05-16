@@ -11,43 +11,37 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
 #[Route('/api/notificaciones')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 class NotificacionController extends AbstractController
 {
-    #[Route('', name: 'api_notificaciones_list', methods: ['POST'])]
-    public function list(Request $request, UserRepository $userRepository, NotificacionRepository $notifRepository): JsonResponse
+    #[Route('', name: 'api_notificaciones_list', methods: ['GET', 'POST'])]
+    public function list(NotificacionRepository $notifRepository): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $email = $data['email'] ?? null;
+        $user = $this->getUser();
 
-        if (!$email) {
-            return $this->json(['error' => 'Email requerido'], 400);
-        }
-
-        $user = $userRepository->findOneBy(['email' => $email]);
         if (!$user) {
-            return $this->json(['error' => 'Usuario no encontrado'], 404);
+            return $this->json(['error' => 'Usuario no autenticado'], 401);
         }
 
         $notificaciones = $notifRepository->findBy(
             ['user' => $user],
             ['createdAt' => 'DESC'],
-            20 // max 20 notificaciones para no cargar demasiado
+            20
         );
 
-        $result = [];
-        foreach ($notificaciones as $n) {
-            $result[] = [
-                'id' => $n->getId(),
-                'type' => $n->getTipo(),
-                'title' => $n->getTitle(),
-                'desc' => $n->getDescription(),
-                'action' => $n->getActionText(),
-                'icon' => $n->getIcon(),
-                'leida' => $n->isLeida(),
-                'date' => $n->getCreatedAt()->format('Y-m-d H:i:s'),
-            ];
-        }
+        $result = array_map(fn($n) => [
+            'id' => $n->getId(),
+            'type' => $n->getTipo(),
+            'title' => $n->getTitle(),
+            'desc' => $n->getDescription(),
+            'action' => $n->getActionText(),
+            'icon' => $n->getIcon(),
+            'leida' => $n->isLeida(),
+            'date' => $n->getCreatedAt()->format('Y-m-d H:i:s'),
+        ], $notificaciones);
 
         return $this->json(['notificaciones' => $result]);
     }

@@ -19,6 +19,9 @@ class Alumno
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $habilidades = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $bio = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $cvPdf = null;
 
@@ -163,6 +166,18 @@ class Alumno
                 $candidatura->setAlumno(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getBio(): ?string
+    {
+        return $this->bio;
+    }
+
+    public function setBio(?string $bio): static
+    {
+        $this->bio = $bio;
 
         return $this;
     }

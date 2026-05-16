@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
+import { assetUrl } from '../lib/urls';
 import { useUser } from '../context/UserContext';
 
 interface Chat {
     id: number;
     nombre: string;
-    empresa: string;
     ultimo_mensaje: string;
-    ultima_vez: string;
-    participantes: { nombre: string; foto: string | null }[];
+    fecha: string;
+    candidatura?: {
+        empresa: string;
+        alumno: string;
+    };
+    participantes: { id: number; nombre: string; is_empresa: boolean; foto: string | null }[];
 }
 
 interface Message {
@@ -16,6 +20,7 @@ interface Message {
     remitente: string;
     remitente_email: string;
     remitente_foto: string | null;
+    remitente_is_empresa: boolean;
     contenido: string;
     fecha: string;
     leido_por_todos: boolean;
@@ -54,11 +59,11 @@ const ChatSystem: React.FC = () => {
 
     useEffect(() => {
         const fetchChats = async () => {
-            if (!user?.email) return;
+            if (!user) return;
             try {
-                const res = await axios.post('https://educonect.alwaysdata.net/api/chat/list', { email: user.email });
+                const res = await api.get('/chat/list');
                 setChats(res.data);
-                if (res.data.length > 0) setSelectedChat(res.data[0]);
+                if (res.data.length > 0 && !selectedChat) setSelectedChat(res.data[0]);
             } catch (err) {
                 console.error("Error fetching chats", err);
             } finally {
@@ -72,9 +77,8 @@ const ChatSystem: React.FC = () => {
         if (!selectedChat) return;
         
         const markAsRead = async () => {
-            if (!user?.email) return;
             try {
-                await axios.post(`https://educonect.alwaysdata.net/api/chat/${selectedChat.id}/read`, { email: user.email });
+                await api.post(`/chat/${selectedChat.id}/read`);
             } catch (err) {
                 console.error("Error marking as read", err);
             }
@@ -82,10 +86,12 @@ const ChatSystem: React.FC = () => {
 
         const fetchMessages = async () => {
             try {
-                const res = await axios.get(`https://educonect.alwaysdata.net/api/chat/${selectedChat.id}/messages`);
-                setMessages(res.data);
-                setTimeout(() => scrollToBottom(), 100);
-                markAsRead(); // Mark as read after fetching
+                const res = await api.get(`/chat/${selectedChat.id}/messages`);
+                if (res.status === 200) {
+                    setMessages(res.data);
+                    setTimeout(() => scrollToBottom(), 100);
+                    markAsRead();
+                }
             } catch (err) {
                 console.error("Error fetching messages", err);
             }
@@ -96,12 +102,9 @@ const ChatSystem: React.FC = () => {
     }, [selectedChat, user]);
 
     const handleDeleteMessage = async (messageId: number) => {
-        if (!user?.email) return;
         try {
-            await axios.delete(`https://educonect.alwaysdata.net/api/chat/message/${messageId}`, {
-                data: { email: user.email }
-            });
-            setMessages(prev => prev.filter(m => m.id !== messageId));
+            await api.delete(`/chat/message/${messageId}`);
+            setMessages((prev: any[]) => prev.filter((m: any) => m.id !== messageId));
             setContextMenu(null);
         } catch (err) {
             console.error("Error deleting message", err);
@@ -111,15 +114,14 @@ const ChatSystem: React.FC = () => {
     const handleSend = async (e?: React.FormEvent, contentOverride?: string) => {
         if (e) e.preventDefault();
         const content = contentOverride || newMessage;
-        if (!content.trim() || !selectedChat || !user?.email) return;
+        if (!content.trim() || !selectedChat) return;
 
         try {
-            await axios.post(`https://educonect.alwaysdata.net/api/chat/${selectedChat.id}/send`, {
-                email: user.email,
+            await api.post(`/chat/${selectedChat.id}/send`, {
                 contenido: content
             });
             if (!contentOverride) setNewMessage('');
-            const res = await axios.get(`https://educonect.alwaysdata.net/api/chat/${selectedChat.id}/messages`);
+            const res = await api.get(`/chat/${selectedChat.id}/messages`);
             setMessages(res.data);
             setTimeout(() => scrollToBottom(true), 50);
             setShowEmojiPicker(false);
@@ -135,9 +137,9 @@ const ChatSystem: React.FC = () => {
         }
     };
 
-    const filteredChats = chats.filter(c => 
+    const filteredChats = chats.filter((c: any) => 
         c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        c.empresa.toLowerCase().includes(searchQuery.toLowerCase())
+        c.candidatura?.empresa.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (loading) return (
@@ -159,10 +161,27 @@ const ChatSystem: React.FC = () => {
         );
     }
 
+    const cleanName = (text: string) => {
+        // Elimina el texto entre paréntesis o después de un guion (ej: " - Bakend / Fronted")
+        return text.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*-\s*.*?\s*\/\s*.*?\s*/g, '').trim();
+    };
+
+    const getAvatarUrl = (foto: string | null, isEmpresa: boolean) => {
+        if (!foto) return null;
+        const folder = isEmpresa ? 'logos' : 'fotos';
+        return assetUrl(foto.startsWith('/uploads') ? foto : `/uploads/${folder}/${foto}`);
+    };
+
+    const formatTime = (dateString: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(date);
+    };
+
     return (
-        <div className="flex flex-col lg:flex-row h-full bg-white dark:bg-zinc-950 rounded-[1.5rem] lg:rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in duration-700">
-            {/* Sidebar Superior */}
-            <div className={`w-full lg:w-80 xl:w-96 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-zinc-900/30 ${selectedChat && 'hidden lg:flex'}`}>
+        <div className="flex flex-col lg:flex-row h-[calc(100dvh-64px)] lg:h-[calc(100dvh-140px)] w-full bg-white dark:bg-zinc-950 lg:rounded-[2.5rem] border-x lg:border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in fade-in duration-700">
+            {/* Sidebar Superior - Canales */}
+            <div className={`w-full lg:w-[350px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-zinc-900/30 h-full ${selectedChat && 'hidden lg:flex'}`}>
                 <div className="p-4 lg:p-8 pb-2 lg:pb-4">
                     <h3 className="text-xl lg:text-2xl font-black dark:text-white tracking-tight mb-4 lg:mb-6 flex items-center gap-3">
                         <span className="material-symbols-outlined text-indigo-600">forum</span>
@@ -175,7 +194,7 @@ const ChatSystem: React.FC = () => {
                             placeholder="Buscar contacto..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 lg:pl-12 pr-4 py-3 lg:py-4 bg-white dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 rounded-xl lg:rounded-2xl text-[10px] lg:text-xs font-bold dark:text-zinc-200 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-xs transition-all placeholder:text-zinc-400"
+                            className="w-full pl-10 lg:pl-12 pr-4 py-3 lg:py-4 bg-white dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700/50 rounded-xl lg:rounded-2xl text-[11px] lg:text-xs font-bold dark:text-zinc-200 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-xs transition-all placeholder:text-zinc-400"
                         />
                     </div>
                 </div>
@@ -187,24 +206,28 @@ const ChatSystem: React.FC = () => {
                             onClick={() => setSelectedChat(chat)}
                             className={`w-full p-3 lg:p-4 rounded-2xl lg:rounded-3xl flex items-center gap-3 lg:gap-4 transition-all duration-300 relative group overflow-hidden ${
                                 selectedChat?.id === chat.id 
-                                ? 'bg-linear-to-br from-indigo-600 via-indigo-700 to-indigo-800 text-white shadow-xl shadow-indigo-600/20 translate-x-1' 
-                                : 'hover:bg-white dark:hover:bg-zinc-800 hover:shadow-lg border border-transparent hover:border-zinc-100 dark:hover:border-zinc-700'
+                                ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 translate-x-1' 
+                                : 'hover:bg-white dark:hover:bg-zinc-800 hover:shadow-lg border border-zinc-100 dark:border-zinc-700'
                             }`}
                         >
-                            <div className={`size-10 lg:size-12 rounded-xl lg:rounded-2xl flex items-center justify-center text-xs lg:text-sm font-black shrink-0 shadow-sm transition-transform group-hover:scale-105 overflow-hidden ${
-                                selectedChat?.id === chat.id ? 'bg-white/20' : 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 text-indigo-600'
+                            <div className={`size-12 rounded-full flex items-center justify-center text-xs lg:text-sm font-black shrink-0 shadow-sm transition-transform group-hover:scale-105 overflow-hidden ${
+                                selectedChat?.id === chat.id ? 'bg-white/20' : 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white'
                             }`}>
-                                {chat.participantes.find(p => p.nombre !== user?.nombre)?.foto ? (
-                                    <img src={`https://educonect.alwaysdata.net/uploads/fotos/${chat.participantes.find(p => p.nombre !== user?.nombre)?.foto}`} className="w-full h-full object-cover" alt="Perfil" />
-                                ) : (
-                                    chat.nombre.substring(0, 2).toUpperCase()
-                                )}
+                                {(() => {
+                                    const other = chat.participantes.find(p => p.nombre !== user?.nombre);
+                                    const url = other ? getAvatarUrl(other.foto, other.is_empresa) : null;
+                                    return url ? (
+                                        <img src={url} className="w-full h-full object-cover" alt="Perfil" />
+                                    ) : (
+                                        chat.nombre.substring(0, 2).toUpperCase()
+                                    );
+                                })()}
                             </div>
                             <div className="flex-1 min-w-0 text-left">
                                 <div className="flex justify-between items-center mb-0.5">
-                                    <h4 className="font-black text-xs lg:text-sm truncate tracking-tight">{chat.nombre}</h4>
-                                    <span className={`text-[8px] lg:text-[9px] font-semibold tracking-wide opacity-70 ${selectedChat?.id === chat.id ? 'text-white' : 'text-zinc-400'}`}>
-                                        {chat.ultima_vez}
+                                    <h4 className="font-black text-xs lg:text-sm truncate tracking-tight">{cleanName(chat.nombre)}</h4>
+                                    <span className={`text-[8px] lg:text-[9px] font-semibold tracking-wide opacity-70 shrink-0 ${selectedChat?.id === chat.id ? 'text-white' : 'text-zinc-400'}`}>
+                                        {formatTime(chat.fecha)}
                                     </span>
                                 </div>
                                 <p className={`text-[10px] lg:text-[11px] font-medium truncate leading-tight ${selectedChat?.id === chat.id ? 'text-white/80' : 'text-zinc-500'}`}>
@@ -217,41 +240,44 @@ const ChatSystem: React.FC = () => {
             </div>
 
             {/* Chat Area */}
-            <div className={`flex-1 flex flex-col bg-white dark:bg-zinc-950 relative ${!selectedChat && 'hidden lg:flex'}`}>
+            <div className={`flex-1 min-h-0 flex flex-col bg-zinc-50 dark:bg-zinc-950 relative ${!selectedChat && 'hidden lg:flex'}`}>
                 {selectedChat ? (
                     <>
-                        {/* Elegant Decorative Elements */}
-                        <div className="absolute top-0 right-0 w-64 lg:w-96 h-64 lg:h-96 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/5 dark:bg-indigo-500/5 rounded-full blur-[60px] lg:blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="absolute bottom-0 left-0 w-48 lg:w-64 h-48 lg:h-64 bg-purple-600/5 dark:bg-purple-500/5 rounded-full blur-[50px] lg:blur-[80px] pointer-events-none translate-y-1/2 -translate-x-1/2"></div>
+                        {/* Elegant Decorative Elements - Simplified */}
+                        <div className="absolute top-0 right-0 w-64 lg:w-96 h-64 lg:h-96 bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 
                         {/* Header Premium */}
-                        <div className="p-4 lg:p-6 border-b border-zinc-100 dark:border-zinc-800/80 flex justify-between items-center backdrop-blur-2xl bg-white/80 dark:bg-zinc-950/80 z-20">
-                            <div className="flex items-center gap-3 lg:gap-4 overflow-hidden">
-                                <button className="lg:hidden p-2 -ml-2 text-zinc-400" onClick={() => setSelectedChat(null)}>
-                                    <span className="material-symbols-outlined">arrow_back</span>
+                        <div className="p-3 lg:p-6 border-b border-zinc-100 dark:border-zinc-800/80 flex justify-between items-center backdrop-blur-2xl bg-white/80 dark:bg-zinc-950/80 z-20">
+                            <div className="flex items-center gap-2 lg:gap-4 flex-1 min-w-0 mr-2">
+                                <button className="lg:hidden p-1 -ml-1 text-zinc-400 shrink-0" onClick={() => setSelectedChat(null)}>
+                                    <span className="material-symbols-outlined text-xl">arrow_back</span>
                                 </button>
-                                <div className="size-10 lg:size-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl lg:rounded-2xl flex items-center justify-center text-[10px] lg:text-xs font-black shadow-xl ring-4 ring-zinc-50 dark:ring-zinc-800/50 overflow-hidden shrink-0">
-                                    {selectedChat.participantes.find(p => p.nombre !== user?.nombre)?.foto ? (
-                                        <img src={`https://educonect.alwaysdata.net/uploads/fotos/${selectedChat.participantes.find(p => p.nombre !== user?.nombre)?.foto}`} className="w-full h-full object-cover" alt="Perfil" />
-                                    ) : (
-                                        selectedChat.nombre.substring(0, 2).toUpperCase()
-                                    )}
+                                <div className="size-9 lg:size-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg lg:rounded-2xl flex items-center justify-center text-[10px] lg:text-xs font-black shadow-lg ring-2 ring-zinc-50 dark:ring-zinc-800/50 overflow-hidden shrink-0">
+                                    {(() => {
+                                        const other = selectedChat.participantes.find(p => p.nombre !== user?.nombre);
+                                        const url = other ? getAvatarUrl(other.foto, other.is_empresa) : null;
+                                        return url ? (
+                                            <img src={url} className="w-full h-full object-cover" alt="Perfil" />
+                                        ) : (
+                                            selectedChat.nombre.substring(0, 2).toUpperCase()
+                                        );
+                                    })()}
                                 </div>
-                                <div className="min-w-0">
-                                    <h4 className="font-black text-sm lg:text-base dark:text-white tracking-tight leading-none truncate">{selectedChat.nombre}</h4>
-                                    <div className="flex items-center gap-2 mt-1 lg:mt-2">
-                                        <div className="size-1.5 lg:size-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
-                                        <span className="text-[8px] lg:text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none truncate">Canal Seguro</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-black text-xs lg:text-base dark:text-white tracking-tight leading-none truncate">{cleanName(selectedChat.nombre)}</h4>
+                                        <span className="material-symbols-outlined text-[14px] lg:text-[16px] text-emerald-500">lock</span>
                                     </div>
+                                    <p className="text-[7px] lg:text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Conexión Cifrada</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 lg:gap-3">
                                 <div className="flex items-center gap-2 lg:gap-3 relative">
                                     <button 
                                         onClick={() => setShowSettings(!showSettings)}
-                                        className={`size-9 lg:size-11 rounded-xl lg:rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${showSettings ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white shadow-lg' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 dark:text-zinc-500'}`}
+                                        className={`size-8 lg:size-11 rounded-lg lg:rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 ${showSettings ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white shadow-lg' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 dark:text-zinc-500'}`}
                                     >
-                                        <span className="material-symbols-outlined text-[18px] lg:text-[20px]">settings</span>
+                                        <span className="material-symbols-outlined text-[16px] lg:text-[20px]">settings</span>
                                     </button>
 
                                     {showSettings && (
@@ -261,15 +287,25 @@ const ChatSystem: React.FC = () => {
                                                     <span className="text-[10px] font-semibold tracking-wide text-zinc-400 tracking-widest">Tamaño Letra</span>
                                                     <div className="flex items-center gap-2">
                                                         <button 
-                                                            onClick={() => setFontSize(v => Math.max(10, v - 2))}
+                                                            onClick={() => setFontSize((v: number) => Math.max(10, v - 2))}
                                                             className="size-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 flex items-center justify-center text-xs font-black transition-colors"
                                                         >-</button>
                                                         <span className="text-[11px] font-black w-6 text-center">{fontSize}</span>
                                                         <button 
-                                                            onClick={() => setFontSize(v => Math.min(24, v + 2))}
+                                                            onClick={() => setFontSize((v: number) => Math.min(24, v + 2))}
                                                             className="size-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 flex items-center justify-center text-xs font-black transition-colors"
                                                         >+</button>
                                                     </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {selectedChat.participantes.map((p: any) => (
+                                                        <div key={p.id} className="size-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 border border-indigo-100 dark:border-indigo-800 relative group/p">
+                                                            <span className="text-[10px] font-black">{p.nombre[0]}</span>
+                                                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-zinc-900 text-white text-[8px] font-black rounded-lg opacity-0 group-hover/p:opacity-100 transition-opacity whitespace-nowrap z-50">
+                                                                {p.nombre}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                                 <div className="h-px bg-zinc-100 dark:bg-zinc-800"></div>
                                                 <p className="text-[9px] font-bold text-zinc-400 leading-tight">Configuración local del visualizador de chat.</p>
@@ -280,11 +316,10 @@ const ChatSystem: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Messages Canvas */}
                         <div 
                             ref={messagesContainerRef}
                             onClick={() => { setShowEmojiPicker(false); setShowSettings(false); setContextMenu(null); }}
-                            className="flex-1 overflow-y-auto p-4 lg:p-12 space-y-6 lg:space-y-10 custom-scrollbar relative z-10 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px] lg:[background-size:32px_32px] [background-position: center]"
+                            className="flex-1 min-h-0 overflow-y-auto p-3 lg:p-12 space-y-4 lg:space-y-10 custom-scrollbar relative z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px] lg:[background-size:32px_32px] [background-position: center] opacity-80"
                         >
                             {messages.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center opacity-20 select-none">
@@ -294,7 +329,7 @@ const ChatSystem: React.FC = () => {
                                     <p className="font-semibold tracking-wide text-[8px] lg:text-[9px]">Comunicación Cifrada</p>
                                 </div>
                             ) : (
-                                messages.map((msg, idx) => {
+                                messages.map((msg: any, idx: number) => {
                                     const isMe = msg.remitente_email === user?.email;
                                     const prevMsg = messages[idx - 1];
                                     const nextMsg = messages[idx + 1];
@@ -302,40 +337,36 @@ const ChatSystem: React.FC = () => {
                                     const isSameUserAsNext = nextMsg && nextMsg.remitente_email === msg.remitente_email;
                                     
                                     return (
-                                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500 ${isSameUserAsNext ? 'mb-1 lg:mb-2' : 'mb-8 lg:mb-12'}`}>
-                                            <div className={`max-w-[85%] lg:max-w-[75%] group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500 ${isSameUserAsNext ? 'mb-1' : 'mb-6 lg:mb-12'}`}>
+                                            <div className={`max-w-[92%] lg:max-w-[75%] group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                                                 {!isMe && !isSameUserAsPrev && (
                                                     <div className="flex items-center gap-2 mb-2 ml-4">
-                                                        <div className="size-4 lg:size-5 rounded-md lg:rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30/10 flex items-center justify-center text-[7px] lg:text-[8px] font-black text-indigo-600 overflow-hidden shrink-0">
-                                                            {msg.remitente_foto ? (
-                                                                <img src={`https://educonect.alwaysdata.net/uploads/fotos/${msg.remitente_foto}`} className="w-full h-full object-cover" alt="Perfil" />
-                                                            ) : (
-                                                                msg.remitente.substring(0, 1).toUpperCase()
-                                                            )}
+                                                        <div className="size-4 lg:size-5 rounded-md lg:rounded-lg bg-gradient-to-r from-indigo-600 to-blue-500 flex items-center justify-center text-[7px] lg:text-[8px] font-black text-white overflow-hidden shrink-0">
+                                                            {(() => {
+                                                                const url = getAvatarUrl(msg.remitente_foto, msg.remitente_is_empresa);
+                                                                return url ? (
+                                                                    <img src={url} className="w-full h-full object-cover" alt="Perfil" />
+                                                                ) : (
+                                                                    msg.remitente.substring(0, 1).toUpperCase()
+                                                                );
+                                                            })()}
                                                         </div>
                                                         <span className="text-[9px] lg:text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest truncate max-w-[120px]">{msg.remitente}</span>
                                                     </div>
                                                 )}
                                                 <div 
-                                                    onContextMenu={(e) => {
+                                                    onContextMenu={(e: React.MouseEvent) => {
                                                         if (isMe) {
                                                             e.preventDefault();
                                                             setContextMenu({ x: e.pageX, y: e.pageY, messageId: msg.id });
                                                         }
                                                     }}
-                                                    className={`relative px-4 lg:px-6 pt-3 lg:pt-4 pb-6 lg:pb-8 transition-all duration-300 shadow-sm hover:shadow-xl ${
-                                                    isMe 
-                                                    ? `bg-linear-to-br from-zinc-900 to-zinc-800 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-900 
-                                                       ${isSameUserAsNext ? 'rounded-[1.2rem] lg:rounded-[1.5rem]' : 'rounded-[1.5rem] lg:rounded-[2rem] rounded-tr-none'} 
-                                                       hover:shadow-zinc-500/10` 
-                                                    : `bg-white dark:bg-zinc-800/40 backdrop-blur-md text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-700/50
-                                                       ${isSameUserAsNext ? 'rounded-[1.2rem] lg:rounded-[1.5rem]' : 'rounded-[1.5rem] lg:rounded-[2rem] rounded-tl-none'}
-                                                       hover:shadow-indigo-500/10`
-                                                }`}
-                                                style={{ 
-                                                    padding: `${fontSize * 0.4 + 6}px ${fontSize * 0.7 + 10}px ${fontSize * 0.7 + 14}px`,
-                                                    minWidth: isMe ? 'auto' : `${fontSize * 4}px`
-                                                }}>
+                                                    className={`inline-flex flex-col min-w-[80px] px-4 py-2 transition-all duration-300 shadow-sm ${
+                                                        isMe 
+                                                        ? `bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 ${isSameUserAsNext ? 'rounded-2xl' : 'rounded-2xl rounded-br-sm'}` 
+                                                        : `bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-700 shadow-sm ${isSameUserAsNext ? 'rounded-2xl' : 'rounded-2xl rounded-bl-sm'}`
+                                                    }`}
+                                                >
                                                     {msg.contenido.startsWith('📎 Archivo adjunto:') ? (
                                                         <div className="flex items-center gap-3 py-1">
                                                             <div className="size-8 lg:size-10 rounded-lg lg:rounded-xl bg-white/20 flex items-center justify-center shrink-0">
@@ -352,12 +383,12 @@ const ChatSystem: React.FC = () => {
                                                         <p className="font-bold leading-relaxed tracking-tight break-words" style={{ fontSize: `${fontSize}px` }}>{msg.contenido}</p>
                                                     )}
                                                     
-                                                    <div className={`absolute bottom-2 lg:bottom-2.5 ${isMe ? 'right-3 lg:right-4' : 'left-4 lg:left-6'} flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity`}>
-                                                         <span className="text-[7px] lg:text-[8px] font-semibold tracking-wide tracking-[0.1em]">
-                                                            {new Date(msg.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    <div className="flex items-center gap-1 self-end mt-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                         <span className="text-[10px] tracking-wide leading-none">
+                                                            {formatTime(msg.fecha)}
                                                          </span>
                                                          {isMe && (
-                                                            <span className={`material-symbols-outlined text-[12px] lg:text-[15px] ${msg.leido_por_todos ? 'text-indigo-400 dark:text-indigo-600' : ''}`} style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}>
+                                                            <span className={`material-symbols-outlined text-[14px] leading-none ${msg.leido_por_todos ? 'text-indigo-300' : ''}`} style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}>
                                                                 done_all
                                                             </span>
                                                          )}
@@ -374,7 +405,7 @@ const ChatSystem: React.FC = () => {
                                     style={{ top: contextMenu.y, left: contextMenu.x }}
                                 >
                                     <button 
-                                        onClick={(e) => {
+                                        onClick={(e: React.MouseEvent) => {
                                             e.stopPropagation();
                                             handleDeleteMessage(contextMenu.messageId);
                                         }}
@@ -387,11 +418,10 @@ const ChatSystem: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Composer Premium */}
-                        <div className="p-4 lg:p-8 pt-0 z-20">
+                        <div className="flex-shrink-0 sticky bottom-0 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur-md p-3 lg:p-6 pt-0 z-30">
                             <form 
-                                onSubmit={(e) => handleSend(e)} 
-                                className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl p-2 lg:p-3 rounded-[2rem] lg:rounded-[3rem] border border-zinc-100 dark:border-zinc-800/80 shadow-2xl flex items-center gap-2 lg:gap-3 transition-all focus-within:ring-8 focus-within:ring-indigo-500/5 relative"
+                                onSubmit={(e: React.FormEvent) => handleSend(e)} 
+                                className="bg-white dark:bg-zinc-900 p-1.5 lg:p-3 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5 lg:gap-3 transition-all focus-within:ring-4 focus-within:ring-indigo-500/10 relative"
                             >
                                 <input 
                                     type="file" 
@@ -409,18 +439,18 @@ const ChatSystem: React.FC = () => {
                                 <input
                                     type="text"
                                     value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
                                     placeholder="Mensaje..."
                                     className="flex-1 bg-transparent border-none text-xs lg:text-sm font-bold dark:text-white outline-none focus:ring-0 px-2 lg:px-4 placeholder:text-zinc-400/60 min-w-0"
                                 />
                                 
                                 {showEmojiPicker && (
                                     <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 p-3 lg:p-4 bg-white dark:bg-zinc-900 rounded-2xl lg:rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-2xl flex gap-1 lg:gap-2 animate-in slide-in-from-bottom-2 duration-300 z-50 overflow-x-auto max-w-[90vw]">
-                                        {emojis.map(emoji => (
+                                        {emojis.map((emoji: string) => (
                                             <button 
                                                 key={emoji} 
                                                 type="button"
-                                                onClick={() => setNewMessage(prev => prev + emoji)}
+                                                onClick={() => setNewMessage((prev: string) => prev + emoji)}
                                                 className="size-8 lg:size-10 rounded-lg lg:rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center text-lg lg:text-xl hover:scale-110 transition-transform shrink-0"
                                             >
                                                 {emoji}

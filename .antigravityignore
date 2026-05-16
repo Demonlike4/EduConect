@@ -1,0 +1,14 @@
+# Bloqueo de sumideros de tokens
+node_modules/
+vendor/
+var/cache/
+var/log/
+dist/
+build/
+public/build/
+.git/
+*.pdf
+# Ignorar SVGs gigantes o imágenes codificadas
+*.svg
+*.png
+*.jpg

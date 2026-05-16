@@ -15,30 +15,26 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/chat')]
 class ChatController extends AbstractController
 {
-    #[Route('/list', name: 'api_chat_list', methods: ['POST'])]
-    public function listChats(Request $request, EntityManagerInterface $em): JsonResponse
+    #[Route('/list', name: 'api_chat_list', methods: ['GET'])]
+    public function listChats(EntityManagerInterface $em): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $email = $data['email'] ?? null;
-
-        if (!$email) {
-            return $this->json(['error' => 'Email required'], 400);
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (!$user) {
-            return $this->json(['error' => 'User not found'], 404);
-        }
+        // Usamos el repositorio optimizado para cargar relaciones en una sola query (JOIN)
+        /** @var ChatRepository $chatRepo */
+        $chatRepo = $em->getRepository(Chat::class);
+        $results = $chatRepo->findChatsForUserOptimized($user);
 
-        // Fetch chats where user is participant
-        $qb = $em->getRepository(Chat::class)->createQueryBuilder('c');
-        $qb->join('c.participantes', 'p')
-           ->where('p.id = :userId')
-           ->setParameter('userId', $user->getId());
-        
-        $chats = $qb->getQuery()->getResult();
+        $chatsData = array_map(function(array $row) use ($user) {
+            /** @var Chat $chat */
+            $chat = $row[0];
+            $lastContent = $row['lastContent'];
+            /** @var \DateTimeInterface|null $lastDate */
+            $lastDate = $row['lastDate'];
 
-        $chatsData = array_map(function(Chat $chat) use ($user) {
             $otherParticipant = null;
             foreach ($chat->getParticipantes() as $p) {
                 if ($p->getId() !== $user->getId()) {
@@ -46,8 +42,6 @@ class ChatController extends AbstractController
                     break;
                 }
             }
-
-            $lastMsg = $chat->getMessages()->last();
             
             return [
                 'id' => $chat->getId(),
@@ -56,16 +50,18 @@ class ChatController extends AbstractController
                             : ($chat->getNombre() ?? 'Seguimiento') . ' - ' . $chat->getCandidatura()->getOferta()->getTitulo(),
                 'candidatura_id' => $chat->getCandidatura()->getId(),
                 'empresa' => $chat->getCandidatura()->getOferta()->getEmpresa()->getNombreComercial(),
-                'ultimo_mensaje' => $lastMsg ? $lastMsg->getContenido() : 'Comienza el chat...',
-                'ultima_vez' => $lastMsg ? $lastMsg->getFechaEnvio()->format('H:i') : '12:00',
+                'ultimo_mensaje' => $lastContent ?? 'Comienza el chat...',
+                'ultima_vez' => $lastDate ? $lastDate->format('H:i') : '12:00',
                 'participantes' => array_map(function(User $u) {
                     return [
+                        'id' => $u->getId(),
                         'nombre' => $u->getNombre() ?? $u->getEmail(),
+                        'is_empresa' => (bool)$u->getEmpresa(),
                         'foto' => $u->getAlumno() ? $u->getAlumno()->getFoto() : ($u->getEmpresa() ? $u->getEmpresa()->getLogo() : null)
                     ];
                 }, $chat->getParticipantes()->toArray())
             ];
-        }, $chats);
+        }, $results);
 
         return $this->json($chatsData);
     }
@@ -78,33 +74,35 @@ class ChatController extends AbstractController
             return $this->json(['error' => 'Chat not found'], 404);
         }
 
-        // 1. Generar el ETag ultra-ligero sin hidratar todos los mensajes
-        $etag = $em->getRepository(ChatMessage::class)->getChatETag($id);
+        // Generar ETag ligero
+        /** @var ChatMessageRepository $msgRepo */
+        $msgRepo = $em->getRepository(ChatMessage::class);
+        $etag = $msgRepo->getChatETag($id);
         
         $response = new JsonResponse();
         $response->setEtag($etag);
-        $response->setPublic(); // Opcional, pero define que la caché es pública para esta URL
+        $response->setPublic();
         
-        // 2. Comprobar si el ETag coincide con la cabecera 'If-None-Match' del cliente (Axios)
         if ($response->isNotModified($request)) {
-            // ¡MAGIA! Cortocircuitamos la petición y respondemos INMEDIATAMENTE un 304 Not Modified vacío.
             return $response; 
         }
 
-        // 3. Solo si no coinciden los ETags, hacemos la consulta pesada
-        $messages = $chat->getMessages();
+        // Usamos el repositorio optimizado para evitar N+1 en remitentes y sus perfiles
+        $messages = $msgRepo->findMessagesConRemitentes($id);
         $numParticipantes = count($chat->getParticipantes());
+        
         $messagesData = array_map(function(ChatMessage $msg) use ($numParticipantes) {
             return [
                 'id' => $msg->getId(),
                 'remitente' => $msg->getRemitente()->getNombre(),
                 'remitente_email' => $msg->getRemitente()->getEmail(),
                 'remitente_foto' => $msg->getRemitente()->getAlumno() ? $msg->getRemitente()->getAlumno()->getFoto() : ($msg->getRemitente()->getEmpresa() ? $msg->getRemitente()->getEmpresa()->getLogo() : null),
+                'remitente_is_empresa' => (bool)$msg->getRemitente()->getEmpresa(),
                 'contenido' => $msg->getContenido(),
                 'fecha' => $msg->getFechaEnvio()->format('c'),
                 'leido_por_todos' => count($msg->getLeidoPor()) >= ($numParticipantes - 1)
             ];
-        }, $messages->toArray());
+        }, $messages);
 
         $response->setData($messagesData);
         return $response;
@@ -113,18 +111,17 @@ class ChatController extends AbstractController
     #[Route('/{id}/send', name: 'api_chat_send', methods: ['POST'])]
     public function sendMessage(int $id, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $chat = $em->getRepository(Chat::class)->find($id);
-        $email = $data['email'] ?? null;
-        $contenido = $data['contenido'] ?? null;
-
-        if (!$chat || !$email || !$contenido) {
-            return $this->json(['error' => 'Missing data'], 400);
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (!$user) {
-            return $this->json(['error' => 'User not found'], 404);
+        $data = json_decode($request->getContent(), true);
+        $chat = $em->getRepository(Chat::class)->find($id);
+        $contenido = $data['contenido'] ?? null;
+
+        if (!$chat || !$contenido) {
+            return $this->json(['error' => 'Missing data'], 400);
         }
 
         $message = new ChatMessage();
@@ -139,38 +136,29 @@ class ChatController extends AbstractController
     }
 
     #[Route('/{id}/read', name: 'api_chat_read', methods: ['POST'])]
-    public function markAsRead(int $id, Request $request, EntityManagerInterface $em): JsonResponse
+    public function markAsRead(int $id, EntityManagerInterface $em): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $chat = $em->getRepository(Chat::class)->find($id);
-        $email = $data['email'] ?? null;
-
-        if (!$chat || !$email) {
-            return $this->json(['error' => 'Missing data'], 400);
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (!$user) {
-            return $this->json(['error' => 'User not found'], 404);
-        }
+        /** @var ChatMessageRepository $msgRepo */
+        $msgRepo = $em->getRepository(ChatMessage::class);
+        
+        // Marcado masivo mediante Native SQL para evitar colapso de RAM (Sin hidratar entidades)
+        $msgRepo->markAllUnreadAsReadForUser($id, $user->getId());
 
-        $userId = $user->getId();
-        $messages = $chat->getMessages();
-        foreach ($messages as $msg) {
-            if ($msg->getRemitente()->getId() !== $userId) {
-                $msg->addLector($userId);
-            }
-        }
-
-        $em->flush();
         return $this->json(['status' => 'success']);
     }
 
     #[Route('/message/{messageId}', name: 'api_chat_delete_message', methods: ['DELETE'])]
-    public function deleteMessage(int $messageId, Request $request, EntityManagerInterface $em): JsonResponse
+    public function deleteMessage(int $messageId, EntityManagerInterface $em): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $email = $data['email'] ?? null;
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Unauthorized'], 401);
+        }
         
         $message = $em->getRepository(ChatMessage::class)->find($messageId);
         
@@ -178,8 +166,8 @@ class ChatController extends AbstractController
             return $this->json(['error' => 'Message not found'], 404);
         }
 
-        // Verify sender
-        if ($message->getRemitente()->getEmail() !== $email) {
+        // Verificación de autoría mediante el contexto de seguridad
+        if ($message->getRemitente()->getId() !== $user->getId()) {
             return $this->json(['error' => 'Unauthorized'], 403);
         }
 

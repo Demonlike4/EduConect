@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../lib/api';
 import { useUser } from '../context/UserContext';
+import LogoutModal from '../components/common/LogoutModal';
 
 const SuperAdminDashboard = () => {
-    const { user, logout } = useUser();
+    const { user } = useUser();
     const navigate = useNavigate();
     const [tutores, setTutores] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -13,6 +14,7 @@ const SuperAdminDashboard = () => {
     const [nuevoCentro, setNuevoCentro] = useState('');
     const [centros, setCentros] = useState<any[]>([]);
     const [selectedCentroId, setSelectedCentroId] = useState('');
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
     
     // Quick load
     useEffect(() => {
@@ -25,10 +27,10 @@ const SuperAdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const resTutores = await axios.get('https://educonect.alwaysdata.net/api/admin/tutores/pending');
+            const resTutores = await api.get('/admin/tutores/pending');
             setTutores(resTutores.data.tutores);
 
-            const resCentros = await axios.get('https://educonect.alwaysdata.net/api/admin/centros/full');
+            const resCentros = await api.get('/admin/centros/full');
             setCentros(resCentros.data);
         } catch (e) {
             console.error(e);
@@ -39,7 +41,7 @@ const SuperAdminDashboard = () => {
 
     const handleApprove = async (id: number) => {
         try {
-            await axios.post(`https://educonect.alwaysdata.net/api/admin/tutores/${id}/approve`);
+            await api.post(`/admin/tutores/${id}/approve`);
             setTutores(prev => prev.filter(t => t.id !== id));
             alert('Tutor/Centro aprobado');
         } catch (e) {
@@ -50,7 +52,7 @@ const SuperAdminDashboard = () => {
     const handleCrearCentro = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await axios.post('https://educonect.alwaysdata.net/api/admin/centros/create', { nombre: nuevoCentro });
+            const res = await api.post('/admin/centros/create', { nombre: nuevoCentro });
             alert('Centro creado correctamente. Ya estará disponible en el registro.');
             setNuevoCentro('');
             
@@ -73,7 +75,7 @@ const SuperAdminDashboard = () => {
             return;
         }
         try {
-            await axios.post('https://educonect.alwaysdata.net/api/admin/grados/create', { 
+            await api.post('/admin/grados/create', { 
                 nombre: nuevoGrado,
                 centroId: parseInt(selectedCentroId)
             });
@@ -89,7 +91,7 @@ const SuperAdminDashboard = () => {
         const newName = prompt('Editar nombre del centro:', currentName);
         if (!newName || newName === currentName) return;
         try {
-            await axios.put(`https://educonect.alwaysdata.net/api/admin/centros/${id}`, { nombre: newName });
+            await api.put(`/admin/centros/${id}`, { nombre: newName });
             fetchData();
         } catch (e) { alert('Error al editar'); }
     };
@@ -97,7 +99,7 @@ const SuperAdminDashboard = () => {
     const handleDeleteCentro = async (id: number) => {
         if (!confirm('¿Seguro que deseas eliminar este centro?')) return;
         try {
-            await axios.delete(`https://educonect.alwaysdata.net/api/admin/centros/${id}`);
+            await api.delete(`/admin/centros/${id}`);
             fetchData();
         } catch (e: any) { alert(e.response?.data?.error || 'Error al eliminar'); }
     };
@@ -106,7 +108,7 @@ const SuperAdminDashboard = () => {
         const newName = prompt('Editar nombre del módulo/grado:', currentName);
         if (!newName || newName === currentName) return;
         try {
-            await axios.put(`https://educonect.alwaysdata.net/api/admin/grados/${id}`, { nombre: newName });
+            await api.put(`/admin/grados/${id}`, { nombre: newName });
             fetchData();
         } catch (e) { alert('Error al editar'); }
     };
@@ -114,97 +116,161 @@ const SuperAdminDashboard = () => {
     const handleDeleteGrado = async (id: number) => {
         if (!confirm('¿Seguro que deseas eliminar este módulo/grado?')) return;
         try {
-            await axios.delete(`https://educonect.alwaysdata.net/api/admin/grados/${id}`);
+            await api.delete(`/admin/grados/${id}`);
             fetchData();
         } catch (e: any) { alert(e.response?.data?.error || 'Error al eliminar'); }
     };
 
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-background-dark p-4 lg:p-8 text-black dark:text-white">
-            <header className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 lg:mb-10 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <div className="flex gap-4 items-center">
-                    <span className="material-symbols-outlined text-3xl lg:text-4xl text-primary p-3 bg-primary/10 rounded-2xl">admin_panel_settings</span>
+        <div className="min-h-screen bg-slate-50 dark:bg-[#0B111A] p-4 lg:p-8 text-slate-900 dark:text-slate-100 font-body">
+            {/* ── HEADER RESPONSIVE ─────────────────────────────────────────── */}
+            <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 lg:mb-12 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[32px] shadow-sm border border-slate-200 dark:border-slate-800">
+                <div className="flex gap-5 items-center">
+                    <div className="size-14 lg:size-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                        <span className="material-symbols-outlined text-white text-3xl">admin_panel_settings</span>
+                    </div>
                     <div>
-                        <h1 className="text-xl lg:text-2xl font-black text-primary">Dirección Central</h1>
-                        <p className="text-[10px] lg:text-sm font-bold uppercase tracking-wider text-slate-400">EduConect SuperAdmin</p>
+                        <h1 className="text-2xl lg:text-3xl font-black tracking-tight">Panel de Control</h1>
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mt-1">Super Administración EduConect</p>
                     </div>
                 </div>
-                <button onClick={() => { logout(); navigate('/login'); }} className="w-full sm:w-auto flex text-sm cursor-pointer items-center justify-center p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
-                    Cerrar Sesión
-                </button>
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <button 
+                        onClick={() => setIsLogoutModalOpen(true)} 
+                        className="btn-sm px-6 bg-red-50 dark:bg-red-500/10 text-red-500 border border-red-100 dark:border-red-500/20 hover:bg-red-500 hover:text-white w-full md:w-auto"
+                    >
+                        <span className="material-symbols-outlined text-lg">logout</span>
+                        Cerrar Sesión
+                    </button>
+                </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-                <div className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-                    <h2 className="text-xl font-black mb-6">Administración de Entidades</h2>
-                    
-                    <form onSubmit={handleCrearCentro} className="mb-8 p-4 lg:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-4">
-                        <h3 className="font-bold mb-2">Crear Nuevo Instituto/Centro</h3>
-                        <input
-                            required
-                            type="text"
-                            placeholder="Nombre del Centro"
-                            value={nuevoCentro}
-                            onChange={e => setNuevoCentro(e.target.value)}
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
-                        />
-                        <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-all">Crear Centro</button>
-                    </form>
+            {/* ── TARJETAS DE ESTADÍSTICAS (KPIs) ──────────────────────────────
+                grid-cols-1 (móvil) -> grid-cols-2 (tablet) -> grid-cols-4 (desktop)
+            ───────────────────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 lg:mb-12">
+                {[
+                    { label: 'Institutos Activos', value: centros.length, icon: 'account_balance', color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
+                    { label: 'Cordinadores Pendientes', value: tutores.length, icon: 'person_add', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+                    { label: 'Sistemas Operativos', value: 'Online', icon: 'cloud_done', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+                    { label: 'Nivel de Seguridad', value: 'SSL v4', icon: 'security', color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+                ].map((kpi, i) => (
+                    <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-5 group hover:border-indigo-500/30 transition-all">
+                        <div className={`size-14 rounded-2xl ${kpi.bg} ${kpi.color} flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
+                            <span className="material-symbols-outlined text-2xl font-bold">{kpi.icon}</span>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{kpi.label}</p>
+                            <p className="text-2xl font-black tracking-tight">{kpi.value}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
 
-                    <form onSubmit={handleCrearGrado} className="p-4 lg:p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-4">
-                        <h3 className="font-bold mb-2">Añadir Módulo/Grado a un Centro</h3>
-                        <select
-                            required
-                            value={selectedCentroId}
-                            onChange={(e) => setSelectedCentroId(e.target.value)}
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
-                        >
-                            <option value="">Selecciona un Centro...</option>
-                            {centros.map(c => (
-                                <option key={c.id} value={c.id}>{c.nombre}</option>
-                            ))}
-                        </select>
-                        <input
-                            required
-                            type="text"
-                            placeholder="Nombre del Grado (ej: DAW, Mecatrónica...)"
-                            value={nuevoGrado}
-                            onChange={e => setNuevoGrado(e.target.value)}
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
-                        />
-                        <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-all">Añadir Grado</button>
-                    </form>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                {/* ── SECCIÓN DE FILTROS Y CREACIÓN ─────────────────────────── */}
+                <div className="lg:col-span-1 space-y-8">
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h2 className="text-lg font-black mb-6 flex items-center gap-3">
+                            <span className="material-symbols-outlined text-indigo-600">add_circle</span>
+                            Nuevas Entidades
+                        </h2>
+                        
+                        <div className="space-y-6">
+                            <form onSubmit={handleCrearCentro} className="space-y-4">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Registrar Instituto</label>
+                                <div className="flex flex-col gap-3">
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="Ej: IES Politécnico..."
+                                        value={nuevoCentro}
+                                        onChange={e => setNuevoCentro(e.target.value)}
+                                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                    />
+                                    <button className="btn-sm bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/20">
+                                        Crear Centro
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+
+                            <form onSubmit={handleCrearGrado} className="space-y-4">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Añadir Grado/Módulo</label>
+                                <div className="space-y-3">
+                                    <select
+                                        required
+                                        value={selectedCentroId}
+                                        onChange={(e) => setSelectedCentroId(e.target.value)}
+                                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white appearance-none cursor-pointer font-bold text-sm"
+                                    >
+                                        <option value="">Selecciona Centro...</option>
+                                        {centros.map(c => (
+                                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="Ej: DAW, DAM..."
+                                        value={nuevoGrado}
+                                        onChange={e => setNuevoGrado(e.target.value)}
+                                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                    />
+                                    <button className="btn-sm bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 border border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-600 hover:text-white w-full transition-all">
+                                        Confirmar Grado
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-                    <h2 className="text-xl font-black mb-6">Solicitudes de Coordinadores</h2>
+                {/* ── SOLICITUDES PENDIENTES ──────────────────────────────────── */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-lg font-black flex items-center gap-3">
+                            <span className="material-symbols-outlined text-amber-500">pending_actions</span>
+                            Validaciones de Coordinador
+                        </h2>
+                        <span className="px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                            {tutores.length} Pendientes
+                        </span>
+                    </div>
+
                     {loading ? (
-                        <p>Cargando peticiones...</p>
+                        <div className="space-y-4">
+                            {[1, 2].map(i => <div key={i} className="h-20 bg-slate-50 dark:bg-slate-800 animate-pulse rounded-2xl" />)}
+                        </div>
                     ) : tutores.length === 0 ? (
-                        <div className="p-10 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-400">
-                            <span className="material-symbols-outlined text-5xl mb-4">task_alt</span>
-                            <p className="font-bold">No hay coordinadores pendientes</p>
+                        <div className="p-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl flex flex-col items-center justify-center text-slate-400">
+                            <span className="material-symbols-outlined text-6xl mb-4 opacity-20">verified_user</span>
+                            <p className="font-bold text-sm tracking-widest uppercase">Todo en orden, jefe.</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {tutores.map(t => (
-                                <div key={t.id} className="p-4 lg:p-5 border border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                    <div className="flex items-center gap-4 w-full">
-                                        <div className="size-12 lg:size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                                <div key={t.id} className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group">
+                                    <div className="flex items-center gap-5 w-full">
+                                        <div className="size-12 rounded-full bg-linear-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-bold shadow-md">
                                             {t.nombre.substring(0, 2).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-bold truncate">{t.nombre}</p>
-                                            <p className="text-xs text-slate-500 mb-1 truncate">{t.email}</p>
-                                            <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full font-bold">{t.centro}</span>
+                                            <p className="font-bold text-slate-900 dark:text-white truncate">{t.nombre}</p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t.email}</p>
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                <span className="material-symbols-outlined text-[14px] text-slate-400">school</span>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t.centro}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => handleApprove(t.id)}
-                                        className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-500/20 hover:scale-105"
+                                        className="btn-sm px-6 bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 w-full sm:w-auto"
                                     >
-                                        <span className="material-symbols-outlined text-lg">check</span>
+                                        <span className="material-symbols-outlined text-lg">how_to_reg</span>
                                         Aprobar
                                     </button>
                                 </div>
@@ -214,38 +280,83 @@ const SuperAdminDashboard = () => {
                 </div>
             </div>
 
-            <div className="mt-8 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <h2 className="text-xl font-black mb-6">Gestión de Centros Registrados</h2>
-                <div className="space-y-4">
-                    {centros.map(centro => (
-                        <div key={centro.id} className="p-4 lg:p-5 border border-slate-200 dark:border-slate-700 rounded-2xl animate-in fade-in duration-300">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="font-black text-base lg:text-lg text-primary">{centro.nombre}</h3>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleEditCentro(centro.id, centro.nombre)} className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-all" title="Editar"><span className="material-symbols-outlined text-sm">edit</span></button>
-                                    <button onClick={() => handleDeleteCentro(centro.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-all" title="Eliminar"><span className="material-symbols-outlined text-sm">delete</span></button>
-                                </div>
-                            </div>
-                            {centro.grados && centro.grados.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
-                                    {centro.grados.map((g: any) => (
-                                        <div key={g.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-[#0B111A] rounded-xl border border-slate-200 dark:border-slate-800">
-                                            <span className="font-bold text-sm text-slate-700 dark:text-slate-300 truncate pr-2" title={g.nombre}>{g.nombre}</span>
-                                            <div className="flex gap-1 shrink-0">
-                                                <button onClick={() => handleEditGrado(g.id, g.nombre)} className="p-1.5 text-slate-500 hover:text-primary transition-colors"><span className="material-symbols-outlined text-xs">edit</span></button>
-                                                <button onClick={() => handleDeleteGrado(g.id)} className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-xs">delete</span></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-slate-500 italic px-2">No hay grados asociados.</p>
-                            )}
-                        </div>
-                    ))}
-                    {centros.length === 0 && <p className="text-slate-500">Aún no se han creado centros.</p>}
+            {/* ── TABLA MASIVA DE CENTROS ─────────────────────────────────────
+                Implementa Scroll Horizontal Aislado con Scroll Hint
+            ────────────────────────────────────────────────────────────── */}
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                    <div>
+                        <h2 className="text-lg font-black flex items-center gap-3">
+                            <span className="material-symbols-outlined text-indigo-600">domain</span>
+                            Estructura de Centros y Grados
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1">Gestión masiva de la arquitectura educativa del sistema</p>
+                    </div>
+
                 </div>
+
+                <div className="scroll-hint-right group">
+                    <div className="overflow-x-auto w-full custom-scrollbar">
+                        <table className="w-full min-w-[800px] text-left border-separate border-spacing-y-3">
+                            <thead>
+                                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    <th className="px-6 py-2">ID</th>
+                                    <th className="px-6 py-2">Nombre del Instituto</th>
+                                    <th className="px-6 py-2">Estructura Académica (Grados)</th>
+                                    <th className="px-6 py-2 text-right">Acciones de Sistema</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-transparent">
+                                {centros.map(centro => (
+                                    <tr key={centro.id} className="bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all rounded-2xl">
+                                        <td className="px-6 py-5 first:rounded-l-2xl">
+                                            <span className="text-xs font-mono text-slate-400">#{centro.id}</span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <p className="font-bold text-primary">{centro.nombre}</p>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex flex-wrap gap-2">
+                                                {centro.grados && centro.grados.length > 0 ? (
+                                                    centro.grados.map((g: any) => (
+                                                        <div key={g.id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg group/pill">
+                                                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{g.nombre}</span>
+                                                            <div className="flex gap-1 opacity-0 group-hover/pill:opacity-100 transition-opacity">
+                                                                <button onClick={() => handleEditGrado(g.id, g.nombre)} className="text-slate-400 hover:text-indigo-600"><span className="material-symbols-outlined text-xs">edit</span></button>
+                                                                <button onClick={() => handleDeleteGrado(g.id)} className="text-slate-400 hover:text-red-500"><span className="material-symbols-outlined text-xs">delete</span></button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-slate-500 italic">Sin grados</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-right last:rounded-r-2xl">
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => handleEditCentro(centro.id, centro.nombre)} className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:text-indigo-600 transition-all shadow-sm">
+                                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                                </button>
+                                                <button onClick={() => handleDeleteCentro(centro.id)} className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:text-red-500 transition-all shadow-sm">
+                                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {centros.length === 0 && (
+                    <div className="py-20 text-center">
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Buscador de Centros Vacío</p>
+                    </div>
+                )}
             </div>
+            
+            <LogoutModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} />
         </div>
     );
 };

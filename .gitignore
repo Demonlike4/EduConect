@@ -33,3 +33,9 @@ Thumbs.db
 # Frontend specific
 /frontend/node_modules/
 /frontend/dist/
+
+# Documentos ofimaticos y temporales
+*.docx
+*.pdf
+*.txt
+~*

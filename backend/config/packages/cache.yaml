@@ -15,5 +15,7 @@ framework:
         #app: cache.adapter.apcu
 
         # Namespaced pools use the above "app" backend by default
-        #pools:
+        pools:
             #my.dedicated.cache: null
+            cache.rate_limiter:
+                adapter: cache.adapter.filesystem

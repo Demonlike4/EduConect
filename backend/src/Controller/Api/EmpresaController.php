@@ -193,6 +193,7 @@ class EmpresaController extends AbstractController
                     'tutor_empresa' => $candidatura->getTutorEmpresa() ? ($candidatura->getTutorEmpresa()->getNombre() ?? $candidatura->getTutorEmpresa()->getEmail()) : null,
                     'tutor_centro' => $candidatura->getTutorCentro() ? ($candidatura->getTutorCentro()->getNombre() ?? $candidatura->getTutorCentro()->getEmail()) : null,
                     'foto' => $alumnoObj->getFoto(),
+                    'bio' => $alumnoObj->getBio(),
                 ];
             }
         }

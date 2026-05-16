@@ -17,8 +17,13 @@ class TutorEmpresaController extends AbstractController
     #[Route('/api/tutor-empresa/dashboard', name: 'api_tutor_empresa_dashboard', methods: ['POST'])]
     public function getDashboard(Request $request, UserRepository $userRepository): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $email = $data['email'] ?? null;
+        $user = $this->getUser();
+        if ($user) {
+            $email = $user->getUserIdentifier();
+        } else {
+            $data = json_decode($request->getContent(), true);
+            $email = $data['email'] ?? null;
+        }
 
         if (!$email) {
             return $this->json(['error' => 'Email required'], 400);
@@ -44,6 +49,7 @@ class TutorEmpresaController extends AbstractController
                 'foto' => $alumno->getFoto(),
                 'grado' => $alumno->getGrado() ? $alumno->getGrado()->getNombre() : 'Sin grado',
                 'centro' => $alumno->getCentro() ? $alumno->getCentro()->getNombre() : 'Sin centro',
+                'bio' => $alumno->getBio(),
                 'candidatura' => [
                     'id' => $candidatura->getId(),
                     'estado' => $candidatura->getEstado(),

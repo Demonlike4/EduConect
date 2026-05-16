@@ -85,13 +85,21 @@ class CandidaturaManager
         $this->createChatsForCandidatura($candidatura);
     }
 
-    public function validarPorCentro(Candidatura $candidatura, ?string $firma = null): void
+    public function validarPorCentro(Candidatura $candidatura, ?string $firma = null, ?string $horario = null, ?string $tipoDuracion = null): void
     {
         // Paso 1: El Tutor de Centro valida los detalles y firma.
         $candidatura->setEstado('PENDIENTE_FIRMA_EMPRESA');
 
         if ($firma) {
             $candidatura->setFirmaTutorCentro($firma);
+        }
+
+        if ($horario) {
+            $candidatura->setHorario($horario);
+        }
+
+        if ($tipoDuracion) {
+            $candidatura->setTipoDuracion($tipoDuracion);
         }
 
         // Asignación de tutores (si no estaban ya)
@@ -144,10 +152,15 @@ class CandidaturaManager
         $fechaInicio = new \DateTime();
         $fechaFin = (clone $fechaInicio);
 
-        if ($duracion === '1_mes') {
+        if (str_contains(strtolower($duracion), '1') && str_contains(strtolower($duracion), 'mes')) {
             $fechaFin->modify('+1 month');
-        } elseif ($duracion === '2_meses') {
+        } elseif (str_contains(strtolower($duracion), '2') && str_contains(strtolower($duracion), 'mes')) {
             $fechaFin->modify('+2 months');
+        } elseif (str_contains(strtolower($duracion), '4') && str_contains(strtolower($duracion), 'mes')) {
+            $fechaFin->modify('+4 months');
+        } elseif (preg_match('/(\d+)/', $duracion, $matches)) {
+            $num = $matches[1];
+            $fechaFin->modify("+$num months");
         } else {
              $fechaFin->modify('+3 months');
         }
@@ -305,11 +318,19 @@ class CandidaturaManager
                         ? $candidatura->getFechaInicio()->format('d/m/Y') : 'Pendiente';
         $fechaFin    = $candidatura->getFechaFin()
                         ? $candidatura->getFechaFin()->format('d/m/Y') : 'Pendiente';
-        $horario     = $candidatura->getHorario() === 'manana' ? 'Mañana (08:00–15:00)' : 'Tarde (15:00–22:00)';
-        $duracion    = match ($candidatura->getTipoDuracion()) {
+        $rawHorario = $candidatura->getHorario();
+        $horario = match ($rawHorario) {
+            'manana' => 'Mañana (08:00–15:00)',
+            'tarde' => 'Tarde (15:00–22:00)',
+            default => $rawHorario ?? 'No especificado'
+        };
+
+        $rawDuracion = $candidatura->getTipoDuracion();
+        $duracion = match ($rawDuracion) {
             '1_mes'   => '1 mes',
             '2_meses' => '2 meses',
-            default   => '3 meses',
+            '3_meses' => '3 meses',
+            default   => $rawDuracion ?? '3 meses'
         };
 
         // Número de expediente determinístico (año + hash parcial del ID)

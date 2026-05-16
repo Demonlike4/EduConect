@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Command;
+
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+
+#[AsCommand(
+    name: 'app:create-admin',
+    description: 'Crea un usuario con rol ROLE_SUPERADMIN de forma segura desde CLI.',
+)]
+class CreateAdminCommand extends Command
+{
+    private EntityManagerInterface $entityManager;
+    private UserPasswordHasherInterface $passwordHasher;
+
+    public function __construct(EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher)
+    {
+        parent::__construct();
+        $this->entityManager = $entityManager;
+        $this->passwordHasher = $passwordHasher;
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        $email = $io->ask('Email del administrador');
+        $nombre = $io->ask('Nombre del administrador');
+        $password = $io->askHidden('Contraseña del administrador');
+
+        if (!$email || !$nombre || !$password) {
+            $io->error('Todos los campos son obligatorios.');
+            return Command::FAILURE;
+        }
+
+        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+        
+        if (!$user) {
+            $user = new User();
+            $user->setEmail($email);
+        }
+
+        $user->setNombre($nombre);
+        $user->setRoles(['ROLE_SUPERADMIN']);
+        $user->setIsAprobado(true);
+        
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
+        $user->setPassword($hashedPassword);
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $io->success(sprintf('Usuario administrador %s creado/actualizado correctamente.', $email));
+
+        return Command::SUCCESS;
+    }
+}

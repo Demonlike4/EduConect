@@ -9,18 +9,54 @@
     --color-background-light: #f8faff;
     --color-background-dark: #0f172a;
 
+    /* Brand Colors */
+    --color-brand-primary: #4f46e5;
+    --color-brand-secondary: #6366f1;
+
     --font-display: "Outfit", "Inter", system-ui, sans-serif;
     --font-body: "Inter", system-ui, sans-serif;
 
     --radius-3xl: 2rem;
     --radius-4xl: 3rem;
+
+    /* ── Z-INDEX SCALE ──────────────────────────────────────────────────────
+     * Jerarquía de capas centralizada. Usar SIEMPRE estas variables en vez
+     * de valores mágicos como z-[100]. Se aplican con var(--z-*) en CSS
+     * o con las clases utilitarias definidas abajo.
+     * ──────────────────────────────────────────────────────────────────── */
+    --z-base:    0;    /* Contenido estático normal                     */
+    --z-raised:  10;   /* Tarjetas con hover (hover:-translate-y-1)     */
+    --z-sticky:  20;   /* Headers sticky dentro del panel de contenido  */
+    --z-sidebar: 70;   /* Sidebar fijo en desktop                       */
+    --z-overlay: 60;   /* Fondo oscuro (backdrop) del drawer móvil      */
+    --z-drawer:  70;   /* Drawer/Sidebar animado en móvil               */
+    --z-modal:   80;   /* Modales y diálogos                            */
+    --z-toast:   90;   /* Notificaciones / Toasts emergentes            */
+    --z-top:     100;  /* Elementos que siempre deben estar encima      */
 }
 
 @layer base {
-    body {
-        @apply font-body text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-950 antialiased;
+    /**
+     * SCROLL FIX — El problema de scroll con la rueda del ratón viene de aquí:
+     * html, body y #root necesitan height:100% para que el h-screen del
+     * DashboardLayout tenga una cadena de altura acotada. Sin esto, el body
+     * crece infinitamente y el <main> no puede hacer scroll aislado.
+     *
+     * NOTA: NO ponemos overflow:hidden en body porque Home.tsx y otras páginas
+     * públicas necesitan scroll natural del body. El bloqueo de overflow lo
+     * hace el propio DashboardLayout con h-screen overflow-hidden en su raíz.
+     */
+    html {
+        height: 100%;
     }
-    
+    body {
+        height: 100%;
+        @apply font-body text-slate-800 dark:text-slate-200 bg-zinc-50 dark:bg-slate-950 antialiased;
+    }
+    #root {
+        height: 100%;
+    }
+
     h1, h2, h3, h4, h5, h6 {
         @apply font-display font-bold tracking-tight;
     }
@@ -40,6 +76,38 @@
     
     .gradient-text {
         @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-600;
+    }
+
+    /* ── SCROLL HINT ────────────────────────────────────────────────────────
+     * Aplica este wrapper al contenedor con overflow-x-auto para mostrar un
+     * gradiente sutil en el borde derecho que indica scroll oculto en móvil.
+     * Uso: <div class="scroll-hint-right"> <div class="overflow-x-auto"> ... */
+    .scroll-hint-right {
+        @apply relative;
+    }
+    .scroll-hint-right::after {
+        content: '';
+        @apply absolute top-0 right-0 bottom-0 w-12 pointer-events-none;
+        background: linear-gradient(to left, rgba(249, 250, 251, 0.95) 0%, transparent 100%);
+        /* Ocultar en pantallas grandes donde no hay scroll */
+        @apply lg:hidden;
+    }
+
+    /* ── BOTÓN RESPONSIVE BASE ──────────────────────────────────────────────
+     * Clase base para botones de acción primaria con altura responsive.
+     * Reemplaza el h-16 fijo. Combinar con clases de color y padding.
+     * Uso: <button class="btn-base px-8 bg-indigo-600 text-white ..."> */
+    .btn-base {
+        @apply h-12 md:h-14 lg:h-16 flex items-center justify-center gap-2 md:gap-3
+               font-bold rounded-2xl transition-all duration-200 active:scale-95
+               text-sm md:text-base;
+    }
+
+    /* Variante pequeña para botones secundarios o de acción secundaria */
+    .btn-sm {
+        @apply h-9 md:h-10 lg:h-11 flex items-center justify-center gap-2
+               font-bold rounded-xl transition-all duration-200 active:scale-95
+               text-xs md:text-sm;
     }
 }
 

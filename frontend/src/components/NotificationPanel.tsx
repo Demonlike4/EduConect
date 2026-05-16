@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { useUser } from '../context/UserContext';
 
 interface NotificationPanelProps {
@@ -25,9 +25,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
 
     useEffect(() => {
         const fetchNotifications = async () => {
-            if (user?.email) {
+            const token = sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
+            if (user && token) {
                 try {
-                    const res = await axios.post('https://educonect.alwaysdata.net/api/notificaciones', { email: user.email });
+                    const res = await api.get('/notificaciones');
                     setNotifications(res.data.notificaciones || []);
                 } catch (err) {
                     console.error("Error fetching notifications:", err);
@@ -48,7 +49,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
 
     const markAsRead = async (notif: AppNotification) => {
         try {
-            await axios.post(`https://educonect.alwaysdata.net/api/notificaciones/${notif.id}/read`);
+            await api.post(`/notificaciones/${notif.id}/read`);
             setNotifications(prev => prev.filter(n => n.id !== notif.id));
             if (onActionClick) {
                 onActionClick(notif);
@@ -93,9 +94,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
     };
 
     return (
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[32px] border border-zinc-200 dark:border-zinc-800 flex flex-col shadow-xl">
-            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-                <div className="size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
+        <div className="bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200 dark:border-zinc-800 flex flex-col shadow-xl overflow-hidden max-h-[calc(100vh-220px)]">
+            <div className="flex items-center gap-3 p-8 pb-4 border-b border-zinc-100 dark:border-zinc-800 sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-10">
+                <div className="size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-indigo-600 text-[22px]">notifications</span>
                 </div>
                 <div>
@@ -104,7 +105,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
                 </div>
             </div>
             
-            <div className="flex flex-col gap-4">
+            <div className="flex-1 overflow-y-auto p-8 pt-4 custom-scrollbar">
                 {loading ? (
                     <div className="text-center py-12 text-zinc-400">
                         <span className="material-symbols-outlined animate-spin text-3xl mb-3 text-indigo-600/30">progress_activity</span>
@@ -115,12 +116,14 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
                         <div className="size-16 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center mb-5 shadow-sm">
                             <span className="material-symbols-outlined text-3xl text-zinc-200 dark:text-zinc-600">notifications_paused</span>
                         </div>
-                        <p className="text-zinc-900 font-black dark:text-white text-sm uppercase tracking-tight">Sin alertas pendientes</p>
-                        <p className="text-[10px] text-zinc-400 mt-2 font-semibold tracking-wide max-w-[180px]">Te avisaremos cuando haya novedades en tus procesos.</p>
+                        <p className="text-zinc-900 font-black dark:text-white text-sm uppercase tracking-tight">Sin alertas relevantes</p>
+                        <p className="text-[10px] text-zinc-400 mt-2 font-semibold tracking-wide max-w-[180px]">Te avisaremos cuando haya novedades en tus candidaturas o diarios.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {notifications.filter(n => !n.leida).map((notif) => {
+                        {notifications
+                            .filter(n => !n.leida)
+                            .map((notif) => {
                             const styles = getStylesByType(notif.type);
                             return (
                                 <div key={notif.id} className={`p-4 rounded-2xl border transition-all duration-300 hover:shadow-md ${styles.bg} ${styles.border} flex flex-col`}>
@@ -135,13 +138,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ role, onActionCli
                                                 {notif.title}
                                             </h4>
                                             <p className={`text-[11px] font-medium leading-relaxed mb-3 ${styles.descColor}`}>
-                                                {notif.desc}
+                                                {notif.desc.replace(/aplicacones/g, 'aplicaciones')}
                                             </p>
                                             <button 
                                                 onClick={() => markAsRead(notif)}
-                                                className="text-[9px] font-semibold tracking-wide text-indigo-600 hover:text-indigo-700 underline underline-offset-4 decoration-2"
+                                                className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 hover:underline transition-all"
                                             >
-                                                {notif.action || 'Aceptar'}
+                                                {notif.action || 'Revisar Ahora'}
                                             </button>
                                         </div>
                                     </div>

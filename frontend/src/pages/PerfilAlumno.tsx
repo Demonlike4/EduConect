@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../lib/api';
 import { useUser } from '../context/UserContext';
-import { apiUrl, assetUrl } from '../lib/urls';
+import Logo from '../components/common/Logo';
+import { assetUrl } from '../lib/urls';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import LogoutModal from '../components/common/LogoutModal';
 
 interface ProfileData {
     nombre: string;
@@ -18,19 +20,20 @@ interface ProfileData {
 
 const PerfilAlumno: React.FC = () => {
     const navigate = useNavigate();
-    const { user, login, logout } = useUser();
+    const { user, login } = useUser();
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [newSkill, setNewSkill] = useState('');
     const [cvFile, setCvFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [uploadingFoto, setUploadingFoto] = useState(false);
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
             if (user?.email) {
                 try {
-                    const res = await axios.post(apiUrl('/api/alumno/profile'), { email: user.email });
+                    const res = await api.post('/alumno/profile', { email: user.email });
                     setProfile(res.data);
                 } catch (error) {
                     console.error("Error fetching profile", error);
@@ -44,9 +47,10 @@ const PerfilAlumno: React.FC = () => {
 
     const handleSave = async () => {
         try {
-            await axios.post(apiUrl('/api/alumno/profile/update'), {
+            await api.post('/alumno/profile/update', {
                 email: user?.email,
-                habilidades: profile?.habilidades || [] // Bio is mocked in backend so sending it won't persist yet
+                habilidades: profile?.habilidades || [],
+                bio: profile?.bio || ''
             });
             alert("Perfil actualizado correctamente");
         } catch (error) {
@@ -64,7 +68,7 @@ const PerfilAlumno: React.FC = () => {
 
         setUploading(true);
         try {
-            const res = await axios.post(apiUrl('/api/alumno/profile/cv'), formData, {
+            const res = await api.post('/alumno/profile/cv', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert(res.data.message);
@@ -87,11 +91,14 @@ const PerfilAlumno: React.FC = () => {
 
         setUploadingFoto(true);
         try {
-            const res = await axios.post(apiUrl('/api/alumno/profile/foto'), formData, {
+            const res = await api.post('/alumno/profile/foto', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             if (profile) setProfile({ ...profile, foto: res.data.foto });
-            if (user) login({ ...user, foto: res.data.foto });
+            if (user) {
+                const session = JSON.parse(sessionStorage.getItem('educonect_session_v2') || '{}');
+                login({ ...user, foto: res.data.foto }, session.token);
+            }
             alert("Foto de perfil actualizada");
         } catch (error: any) {
             console.error("Error uploading foto", error);
@@ -130,17 +137,11 @@ const PerfilAlumno: React.FC = () => {
             setIsSidebarOpen={setIsSidebarOpen}
             sidebarWidthClass="w-80"
             sidebarClassName="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
-            zIndexSidebarClass="z-[70]"
             mainClassName="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300"
             sidebar={
                 <>
                 <div className="p-8 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 p-2.5 rounded-2xl text-white shadow-xl shadow-indigo-600/20 group">
-                            <span className="material-symbols-outlined text-2xl group-hover:rotate-12 transition-transform">school</span>
-                        </div>
-                        <h1 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight">EduConect</h1>
-                    </div>
+                    <Logo variant="default" showTagline tagline="Portal Alumno" />
                     <button className="lg:hidden p-2 text-zinc-400" onClick={() => setIsSidebarOpen(false)}>
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -174,7 +175,7 @@ const PerfilAlumno: React.FC = () => {
 
                 <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
                     <button
-                        onClick={() => { logout(); navigate('/login'); }}
+                        onClick={() => setIsLogoutModalOpen(true)}
                         className="flex w-full items-center justify-center gap-2 px-4 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-red-600 dark:hover:bg-red-500 text-xs font-semibold tracking-wide rounded-2xl transition-all shadow-lg hover:shadow-red-500/20"
                     >
                         <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -197,10 +198,11 @@ const PerfilAlumno: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={handleSave}
-                            className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 hover:bg-indigo-700 text-white px-4 lg:px-8 py-2 lg:py-2.5 rounded-2xl text-[9px] lg:text-[10px] font-semibold tracking-wide transition-all shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 flex items-center gap-2"
+                            className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 text-white size-10 lg:w-auto lg:px-8 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center lg:gap-2 shadow-xl shadow-indigo-600/20 transition-all active:scale-95"
+                            aria-label="Guardar cambios"
                         >
-                            <span className="material-symbols-outlined text-[16px] lg:text-[18px]">save</span>
-                            <span className="hidden xs:inline">Guardar</span>
+                            <span className="material-symbols-outlined text-[20px] lg:text-[22px]">save</span>
+                            <span className="hidden lg:inline text-xs font-black uppercase tracking-widest">Guardar</span>
                         </button>
                     </div>
                 </header>
@@ -301,16 +303,28 @@ const PerfilAlumno: React.FC = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                             {/* Skills Section */}
                             <div className="lg:col-span-2 space-y-10">
-                                <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-8 border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none group">
-                                    <div className="flex items-center justify-between mb-8">
-                                        <h4 className="font-black text-xl dark:text-white flex items-center gap-3">
-                                            <div className="size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600">
-                                                <span className="material-symbols-outlined">terminal</span>
+                                <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-5 lg:p-8 border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none group">
+                                    <div className="flex items-center justify-between mb-6 lg:mb-8">
+                                        <h4 className="font-black text-lg lg:text-xl dark:text-white flex items-center gap-3">
+                                            <div className="size-8 lg:size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600">
+                                                <span className="material-symbols-outlined text-lg lg:text-xl">terminal</span>
                                             </div>
-                                            Skills & Tecnologías Dominadas
+                                            Skills & Tecnologías
                                         </h4>
                                     </div>
                                     
+                                    <div className="mb-8">
+                                        <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Sobre mí / Extracto Profesional</label>
+                                        <textarea
+                                            value={profile?.bio || ''}
+                                            onChange={(e) => profile && setProfile({ ...profile, bio: e.target.value })}
+                                            rows={4}
+                                            className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 rounded-3xl p-6 text-sm font-medium text-zinc-600 dark:text-zinc-300 outline-none focus:border-indigo-500/50 focus:bg-white dark:focus:bg-zinc-800 transition-all resize-none placeholder:text-zinc-400 placeholder:italic"
+                                            placeholder="Cuéntales a las empresas un poco sobre ti, tus metas y lo que te apasiona..."
+                                        />
+                                    </div>
+
+                                    <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Tus Habilidades</label>
                                     <div className="flex flex-wrap gap-3 mb-10">
                                         {profile?.habilidades.map((skill) => (
                                             <div key={skill} className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 p-1.5 pl-4 rounded-2xl flex items-center gap-3 group hover:border-indigo-500/30 hover:bg-white dark:hover:bg-zinc-800 transition-all shadow-sm">
@@ -328,18 +342,18 @@ const PerfilAlumno: React.FC = () => {
                                         )}
                                     </div>
 
-                                    <div className="flex gap-3 bg-zinc-50 dark:bg-zinc-800/30 p-2 rounded-[24px] border border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex flex-col sm:flex-row gap-3 bg-zinc-50 dark:bg-zinc-800/30 p-2 rounded-[24px] border border-zinc-100 dark:border-zinc-800">
                                         <input
                                             type="text"
                                             value={newSkill}
                                             onChange={(e) => setNewSkill(e.target.value)}
-                                            className="flex-1 bg-transparent border-none px-6 py-3 text-sm font-medium outline-none placeholder:text-zinc-400 placeholder:font-bold"
-                                            placeholder="Nueva tecnología (ej: Docker, React...)"
+                                            className="flex-1 bg-transparent border-none px-4 lg:px-6 py-3 text-sm font-medium outline-none placeholder:text-zinc-400 placeholder:font-bold min-w-0"
+                                            placeholder="Nueva tecnología..."
                                             onKeyDown={(e) => e.key === 'Enter' && addSkill()}
                                         />
                                         <button 
                                             onClick={addSkill} 
-                                            className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl text-[10px] font-semibold tracking-wide transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl lg:rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
                                         >
                                             Añadir
                                         </button>
@@ -366,10 +380,10 @@ const PerfilAlumno: React.FC = () => {
 
                             {/* CV Section Area */}
                             <div className="space-y-10">
-                                <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-8 border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden relative">
-                                    <h4 className="font-black text-xl dark:text-white flex items-center gap-3 mb-8">
-                                        <div className="size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600">
-                                            <span className="material-symbols-outlined">picture_as_pdf</span>
+                                <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-5 lg:p-8 border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden relative">
+                                    <h4 className="font-black text-lg lg:text-xl dark:text-white flex items-center gap-3 mb-6 lg:mb-8">
+                                        <div className="size-8 lg:size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600">
+                                            <span className="material-symbols-outlined text-lg lg:text-xl">picture_as_pdf</span>
                                         </div>
                                         Fichero CV (PDF)
                                     </h4>
@@ -442,6 +456,7 @@ const PerfilAlumno: React.FC = () => {
                         </div>
                     </div>
                 </main>
+            <LogoutModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} />
         </DashboardLayout>
     );
 };

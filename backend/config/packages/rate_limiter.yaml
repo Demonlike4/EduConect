@@ -1,0 +1,9 @@
+framework:
+    rate_limiter:
+        # Define the default explicit login pool for security authentication
+        # even if login_throttling implicitly builds one, it's safer for autowiring and caching
+        login:
+            policy: 'fixed_window'
+            limit: 5
+            interval: '15 minutes'
+            cache_pool: 'cache.rate_limiter'

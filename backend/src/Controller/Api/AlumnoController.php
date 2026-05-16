@@ -72,19 +72,20 @@ class AlumnoController extends AbstractController
             return $this->json(['error' => 'Email required'], 400);
         }
 
+        /** @var User|null $user */
         $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
 
         if (!$user) {
             return $this->json(['error' => 'Usuario no encontrado'], 404);
         }
 
-        if (!$user->getAlumno()) {
+        $alumno = $user->getAlumno();
+        
+        if (!$alumno) {
             return $this->json(['error' => 'Perfil de alumno no encontrado'], 403);
         }
 
-        $alumno = $user->getAlumno();
-        
-        // Find active candidatura
+        // Identificar la candidatura activa para evaluar el estado de prácticas
         $activeCandidatura = null;
         foreach ($alumno->getCandidaturas() as $candidatura) {
             if ($candidatura->getEstado() !== 'RECHAZADO') {
@@ -92,6 +93,9 @@ class AlumnoController extends AbstractController
                 break;
             }
         }
+
+        // Casting estricto a booleano para prevenir desajustes de serialización en el cliente React
+        $isAprobado = (bool) $user->isAprobado();
 
         $dashboardData = [
             'nombre' => $user->getNombre(),
@@ -106,6 +110,8 @@ class AlumnoController extends AbstractController
             'fecha_inicio' => $activeCandidatura && $activeCandidatura->getFechaInicio() ? $activeCandidatura->getFechaInicio()->format('Y-m-d') : null,
             'fecha_fin' => $activeCandidatura && $activeCandidatura->getFechaFin() ? $activeCandidatura->getFechaFin()->format('Y-m-d') : null,
             'candidatura_id' => $activeCandidatura ? $activeCandidatura->getId() : null,
+            'isAprobado' => $isAprobado,  // Retrocompatibilidad frontend
+            'is_aprobado' => $isAprobado, // Nomenclatura estandarizada requerida
         ];
 
         return $this->json($dashboardData);
@@ -228,7 +234,7 @@ class AlumnoController extends AbstractController
             'nombre' => $user->getNombre(),
             'email' => $user->getEmail(),
             'grado' => $alumno->getGrado() ? $alumno->getGrado()->getNombre() : '',
-            'bio' => 'Estudiante apasionado...', // Mock or add field to Entity
+            'bio' => $alumno->getBio(),
             'habilidades' => $alumno->getHabilidades() ? explode(',', $alumno->getHabilidades()) : [],
             'cv' => $alumno->getCvPdf(),
             'foto' => $alumno->getFoto(),
@@ -257,6 +263,10 @@ class AlumnoController extends AbstractController
         if (isset($data['habilidades'])) {
             $habilidades = is_array($data['habilidades']) ? implode(',', $data['habilidades']) : $data['habilidades'];
             $alumno->setHabilidades($habilidades);
+        }
+
+        if (isset($data['bio'])) {
+            $alumno->setBio($data['bio']);
         }
 
         $em->flush();

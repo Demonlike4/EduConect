@@ -61,6 +61,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?bool $isAprobado = true; // Default true for normal users, will be set to false for pending tutors
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $firebaseUid = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $resetToken = null;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
@@ -339,6 +342,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setResetTokenExpiry(?\DateTimeInterface $resetTokenExpiry): static
     {
         $this->resetTokenExpiry = $resetTokenExpiry;
+
+        return $this;
+    }
+
+    public function getFirebaseUid(): ?string
+    {
+        return $this->firebaseUid;
+    }
+
+    public function setFirebaseUid(?string $firebaseUid): static
+    {
+        $this->firebaseUid = $firebaseUid;
 
         return $this;
     }

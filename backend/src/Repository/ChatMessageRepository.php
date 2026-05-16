@@ -34,4 +34,46 @@ class ChatMessageRepository extends ServiceEntityRepository
 
         return md5(sprintf('%d-%d', $total, $maxId));
     }
+
+    /**
+     * Recupera todos los mensajes de un chat con Eager Loading del remitente y sus perfiles (Alumno/Empresa).
+     */
+    public function findMessagesConRemitentes(int $chatId): array
+    {
+        return $this->createQueryBuilder('m')
+            ->select('m', 'r', 'a', 'e')
+            ->join('m.remitente', 'r')
+            ->leftJoin('r.alumno', 'a')
+            ->leftJoin('r.empresa', 'e')
+            ->where('m.chat = :chatId')
+            ->setParameter('chatId', $chatId)
+            ->orderBy('m.fechaEnvio', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Marca todos los mensajes de un chat como leídos para un usuario específico.
+     * Utiliza Native SQL para evitar la hidratación de objetos y el consumo excesivo de RAM.
+     */
+    public function markAllUnreadAsReadForUser(int $chatId, int $userId): void
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        
+        // Usamos una consulta nativa para actualizar el campo JSON leido_por
+        // Esta sintaxis es específica para MySQL 5.7+ / MariaDB.
+        // Si no está el ID del usuario, lo añade al array JSON.
+        $sql = "
+            UPDATE chat_message 
+            SET leido_por = JSON_ARRAY_APPEND(IFNULL(leido_por, '[]'), '$', :userId)
+            WHERE chat_id = :chatId 
+            AND remitente_id != :userId
+            AND NOT JSON_CONTAINS(IFNULL(leido_por, '[]'), JSON_QUOTE(CAST(:userId AS CHAR)), '$')
+        ";
+
+        $conn->executeStatement($sql, [
+            'chatId' => $chatId,
+            'userId' => $userId
+        ]);
+    }
 }

@@ -1,18 +1,61 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { useUser } from '../context/UserContext';
-
-
+import { useNavigate, Link } from 'react-router-dom';
+import api from '../lib/api';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { useUser, type UserRole } from '../context/UserContext';
+import { motion } from 'framer-motion';
+import Logo from '../components/common/Logo';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
     const { login } = useUser();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const firebaseUser = result.user;
+            const email = firebaseUser.email || '';
+
+            const roleMapping: Record<string, UserRole> = {
+                'andresmartinezmartinez2005@gmail.com': 'SUPERADMIN',
+                'admin@educonect.com': 'SUPERADMIN',
+                'tutor@centro.edu': 'TUTOR_CENTRO',
+                'empresa@colabora.com': 'EMPRESA'
+            };
+
+            const assignedRole: UserRole = roleMapping[email] || 'ALUMNO';
+            
+            const userData = {
+                id: Math.floor(Math.random() * 1000),
+                email: email,
+                nombre: firebaseUser.displayName || 'Usuario Google',
+                role: assignedRole,
+                foto: firebaseUser.photoURL || undefined
+            };
+            
+            login(userData, 'google_auth_token_mock');
+
+            if (assignedRole === 'SUPERADMIN') navigate('/dashboard/superadmin');
+            else if (assignedRole === 'TUTOR_CENTRO') navigate('/dashboard/tutor-centro');
+            else if (assignedRole === 'EMPRESA') navigate('/dashboard/empresa');
+            else navigate('/dashboard/alumno');
+
+        } catch (err: any) {
+            console.error(err);
+            setError('Error al iniciar sesión con Google.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,157 +63,227 @@ const Login: React.FC = () => {
         setError(null);
 
         try {
-            // Llamada real al backend Symfony
-            const response = await axios.post('https://educonect.alwaysdata.net/api/login', {
+            const response = await api.post('/login', {
                 email,
                 password
             });
 
-            if (response.data.status === 'success') {
-                const userData = response.data.user;
+            // Validación exhaustiva de la respuesta del backend
+            const { token, user: userData } = response.data;
 
-                // Actualizar contexto global con el nombre real de la BD
-                login(userData);
-
-                // Redirigir según el rol devuelto por la BD
-                if (userData.role === 'ALUMNO') navigate('/dashboard/alumno');
-                else if (userData.role === 'EMPRESA') navigate('/dashboard/empresa');
-                else if (userData.role === 'TUTOR_CENTRO') navigate('/dashboard/tutor-centro');
-                else if (userData.role === 'TUTOR_EMPRESA') navigate('/dashboard/tutor-empresa');
-                else if (userData.role === 'SUPERADMIN') navigate('/dashboard/superadmin');
-                else navigate('/');
+            // Verificar que el token no sea nulo, undefined ni cadena vacía
+            if (!token || typeof token !== 'string' || token.trim() === '') {
+                console.error("Login fallido: Token recibido es nulo, indefinido o vacío.", token);
+                setError('Respuesta de servidor incompleta: token inválido.');
+                return;
             }
 
+            // Verificar que los datos del usuario sean válidos
+            if (!userData || !userData.role) {
+                console.error("Login fallido: Datos de usuario incompletos.", userData);
+                setError('Respuesta de servidor incompleta: datos de usuario inválidos.');
+                return;
+            }
+
+            // Normalizar el rol: eliminar prefijo ROLE_ si existe
+            const normalizedRole = userData.role.startsWith('ROLE_')
+                ? userData.role.substring(5)
+                : userData.role;
+
+            const normalizedUserData = {
+                ...userData,
+                role: normalizedRole
+            };
+
+            // Persistencia en contexto y sessionStorage
+            login(normalizedUserData, token);
+            console.log(`Login exitoso para usuario ${userData.email} con rol ${normalizedRole}`);
+
+            // Redirección inteligente según el rol normalizado
+            const dashboardRoutes: Record<string, string> = {
+                'SUPERADMIN': '/dashboard/superadmin',
+                'TUTOR_CENTRO': '/dashboard/tutor-centro',
+                'TUTOR_EMPRESA': '/dashboard/tutor-empresa',
+                'EMPRESA': '/dashboard/empresa',
+                'ALUMNO': '/dashboard/alumno'
+            };
+
+            const targetPath = dashboardRoutes[normalizedRole] || '/';
+            navigate(targetPath);
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Error al iniciar sesión. Comprueba tus credenciales.');
+            // Manejo de errores específicos
+            if (err.response?.status === 429) {
+                setError('Demasiados intentos. Por seguridad, tu acceso ha sido restringido temporalmente (15 min).');
+            } else if (err.response?.status === 401) {
+                setError('Credenciales inválidas. Verifica tu email y contraseña.');
+            } else if (err.response?.status === 500) {
+                setError('Error del servidor. Por favor, intenta más tarde.');
+            } else {
+                setError(err.response?.data?.error || 'Error al iniciar sesión. Comprueba tus credenciales.');
+            }
+            console.error("Error en handleSubmit:", err);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="flex h-screen w-full bg-white dark:bg-zinc-950 overflow-hidden">
-            {/* Left Side: Image & Branding (Hidden on mobile) */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-                <div 
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 hover:scale-110"
-                    style={{ backgroundImage: "url('/login_bg.png')" }}
-                ></div>
-                <div className="absolute inset-0 bg-linear-to-tr from-indigo-900/90 via-indigo-900/40 to-transparent"></div>
-                
-                <div className="relative z-10 flex flex-col justify-between p-16 h-full text-white">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                        <div className="bg-white/20 backdrop-blur-md p-2.5 rounded-2xl border border-white/20">
-                            <span className="material-symbols-outlined text-2xl text-white">school</span>
-                        </div>
-                        <span className="text-2xl font-black tracking-tight uppercase">EduConect</span>
-                    </div>
-
-                    <div className="max-w-md animate-in slide-in-from-left-8 duration-700">
-                        <h2 className="text-5xl font-black leading-tight tracking-tight mb-6">
-                            Gestiona el futuro de la <span className="text-indigo-300">Formación Profesional</span>
-                        </h2>
-                        <div className="h-1.5 w-24 bg-indigo-500 rounded-full mb-8"></div>
-                        <p className="text-lg text-white/80 font-medium leading-relaxed">
-                            Conecta centros educativos, empresas y alumnos en un entorno digital eficiente y transparente.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-sm font-bold text-white/50 uppercase tracking-widest">
-                        <span>FCT Management System</span>
-                        <div className="size-1 bg-white/30 rounded-full"></div>
-                        <span>v2.0 2026</span>
-                    </div>
-                </div>
+        <div className="relative min-h-screen w-full flex items-center justify-center p-6 overflow-hidden font-inter selection:bg-indigo-100 selection:text-indigo-900">
+            {/* Background Premium Global */}
+            <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                <img 
+                    src="/home_bg_premium.png" 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                    style={{ filter: 'brightness(0.95) contrast(1.1)' }}
+                />
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
             </div>
 
-            {/* Right Side: Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-20 bg-zinc-50 dark:bg-zinc-950 animate-in fade-in duration-500">
-                <div className="w-full max-w-[420px] transition-all">
-                    <div className="mb-10 lg:hidden flex flex-col items-center">
-                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 p-3 rounded-2xl text-white shadow-xl shadow-indigo-600/20 mb-4">
-                            <span className="material-symbols-outlined text-3xl">school</span>
+            <main className="relative z-10 w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-16">
+                {/* Login Glass Card */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                    className="w-full max-w-[460px] bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 shadow-2xl p-10 lg:p-14"
+                >
+                    <div className="flex flex-col gap-8">
+                        {/* Logo */}
+                        <Logo size="md" variant="default" className="w-fit" />
+
+                        {/* Header */}
+                        <div>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2 font-outfit">Bienvenido de nuevo</h2>
+                            <p className="text-slate-600 text-sm font-medium">Gestión inteligente de la Formación Profesional.</p>
                         </div>
-                        <h1 className="text-2xl font-black text-zinc-900 dark:text-white uppercase">EduConect</h1>
+
+                        {error && (
+                            <div className="p-4 bg-red-50/50 backdrop-blur-sm border border-red-100 rounded-2xl text-red-600 text-xs font-bold flex items-center gap-3 animate-bounce-slow">
+                                <span className="material-symbols-outlined text-[18px]">error_outline</span>
+                                {error}
+                            </div>
+                        )}
+
+                        <form className="space-y-6" onSubmit={handleSubmit}>
+                            {/* Email Field */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider" htmlFor="email">Email Corporativo</label>
+                                <div className="relative group">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#4F46E5] transition-colors">mail</span>
+                                    <input
+                                        type="email"
+                                        id="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="nombre@centro.com"
+                                        className="block w-full pl-12 pr-4 py-4 bg-white/60 border border-white/50 rounded-2xl text-slate-900 text-sm font-semibold outline-none focus:bg-white/80 focus:ring-4 focus:ring-indigo-600/10 focus:border-[#4F46E5] transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Field */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center px-1">
+                                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider" htmlFor="password">Contraseña</label>
+                                    <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs font-bold text-[#4F46E5] hover:underline">¿Olvidaste tu clave?</button>
+                                </div>
+                                <div className="relative group">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#4F46E5] transition-colors">lock</span>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        id="password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="block w-full pl-12 pr-12 py-4 bg-white/60 border border-white/50 rounded-2xl text-slate-900 text-sm font-semibold outline-none focus:bg-white/80 focus:ring-4 focus:ring-indigo-600/10 focus:border-[#4F46E5] transition-all"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#4F46E5] transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <button
+                                    disabled={loading}
+                                    className="w-full py-4 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xl tracking-wide rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 group"
+                                    type="submit"
+                                >
+                                    {loading ? (
+                                        <span className="animate-spin material-symbols-outlined">progress_activity</span>
+                                    ) : (
+                                        <>
+                                            Entrar
+                                            <span className="material-symbols-outlined text-2xl group-hover:translate-x-1 transition-transform">login</span>
+                                        </>
+                                    )}
+                                </button>
+                                
+                                <div className="relative py-6">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-white/40"></div>
+                                    </div>
+                                    <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-medium text-slate-500">
+                                        <span className="bg-transparent px-4">O continúa con</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleGoogleLogin}
+                                    className="w-full py-4 bg-white/60 hover:bg-white/80 border border-white/50 text-slate-900 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-black/5 active:scale-[0.98]"
+                                >
+                                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="size-5" alt="Google" />
+                                    Google
+                                </button>
+                            </div>
+                        </form>
+
+                        <div className="text-center">
+                            <p className="text-slate-500 font-semibold text-xs">
+                                ¿No tienes cuenta? 
+                                <button 
+                                    onClick={() => navigate('/registro')} 
+                                    className="ml-2 text-[#4F46E5] font-black hover:underline"
+                                >
+                                    Regístrate aquí
+                                </button>
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="space-y-2 mb-10">
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Bienvenido de nuevo</h2>
-                        <p className="text-zinc-500 dark:text-zinc-400 font-medium">Introduce tus credenciales para acceder a la plataforma.</p>
+                    <footer className="mt-8 flex items-center justify-center gap-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <Link to="/aviso-legal" className="hover:text-[#4F46E5] transition-colors">Aviso Legal</Link>
+                        <Link to="/privacidad" className="hover:text-[#4F46E5] transition-colors">Privacidad</Link>
+                    </footer>
+                </motion.div>
+
+                {/* Floating Office Image (Optional Integration) */}
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                    className="hidden xl:block relative w-full max-w-lg"
+                >
+                    <div className="absolute -inset-10 bg-[#4F46E5]/10 rounded-full blur-[100px] animate-pulse"></div>
+                    <img 
+                        src="/login_bg.png" 
+                        alt="Workspace" 
+                        className="relative w-full h-auto rounded-[3rem] shadow-2xl border border-white/20 skew-y-1 hover:skew-y-0 transition-transform duration-700"
+                    />
+                    <div className="absolute -bottom-6 -left-6 bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/50 max-w-[200px]">
+                        <p className="text-[10px] font-black text-[#4F46E5] uppercase tracking-widest mb-1">Ecosistema FCT</p>
+                        <p className="text-xs font-bold text-slate-700 leading-relaxed">Conexión inteligente entre talento y empresa.</p>
                     </div>
-
-                    {error && (
-                        <div className="mb-8 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-3 animate-in shake-x duration-500">
-                            <span className="material-symbols-outlined">error</span>
-                            {error}
-                        </div>
-                    )}
-
-                    <form className="space-y-6" onSubmit={handleSubmit}>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-black text-zinc-400 uppercase tracking-widest ml-1" htmlFor="email">Email Corporativo</label>
-                            <div className="relative group">
-                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-indigo-600 transition-colors">mail</span>
-                                <input
-                                    className="block w-full px-12 py-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-900 dark:text-white font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all"
-                                    id="email"
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="nombre@centro.com"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between items-center px-1">
-                                <label className="text-xs font-black text-zinc-400 uppercase tracking-widest" htmlFor="password">Contraseña</label>
-                                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">¿Olvidaste tu contraseña?</button>
-                            </div>
-                            <div className="relative group">
-                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-indigo-600 transition-colors">lock</span>
-                                <input
-                                    className="block w-full px-12 py-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-900 dark:text-white font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all"
-                                    id="password"
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            disabled={loading}
-                            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:scale-[1.02] hover:shadow-indigo-500/30 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 mt-4 flex items-center justify-center gap-2"
-                            type="submit"
-                        >
-                            {loading ? (
-                                <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                            ) : (
-                                <>
-                                    Acceder al Sistema
-                                    <span className="material-symbols-outlined text-[20px]">login</span>
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    <div className="mt-12 text-center">
-                        <p className="text-zinc-500 dark:text-zinc-400 font-medium text-sm">
-                            ¿Aún no tienes cuenta? 
-                            <button 
-                                onClick={() => navigate('/registro')} 
-                                className="ml-2 text-indigo-600 font-black hover:text-indigo-700 hover:underline transition-all"
-                            >
-                                Crea tu perfil ahora
-                            </button>
-                        </p>
-                    </div>
-                </div>
-            </div>
+                </motion.div>
+            </main>
         </div>
     );
 };

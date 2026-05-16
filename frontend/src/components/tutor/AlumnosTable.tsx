@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { assetUrl } from '../../lib/urls';
 
 export interface AlumnoData {
     id: number;
@@ -115,7 +116,7 @@ export const AlumnosTable: React.FC<AlumnosTableProps> = ({
                                         <div className="flex items-center gap-3">
                                             <div className="size-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400 ring-2 ring-white dark:ring-zinc-900 overflow-hidden">
                                                 {row.foto ? (
-                                                    <img src={`https://educonect.alwaysdata.net/uploads/fotos/${row.foto}`} className="w-full h-full object-cover" alt="Perfil" />
+                                                    <img src={assetUrl(row.foto.startsWith('/uploads') ? row.foto : `/uploads/fotos/${row.foto}`)} className="w-full h-full object-cover" alt="Perfil" />
                                                 ) : (
                                                     row.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                                                 )}
@@ -179,7 +180,7 @@ export const AlumnosTable: React.FC<AlumnosTableProps> = ({
                                             {row.status === 'ADMITIDO' && row.candidatura_id && (
                                                 <button
                                                     onClick={() => onOpenValModal(row)}
-                                                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-emerald-600/20 hover:bg-emerald-700 transition-colors flex items-center gap-1"
+                                                    className="px-3 py-1.5 border border-emerald-500 text-emerald-600 rounded-lg text-xs font-bold shadow-sm shadow-emerald-600/5 hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-1"
                                                 >
                                                     Validar <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                                                 </button>
@@ -225,7 +226,7 @@ export const AlumnosTable: React.FC<AlumnosTableProps> = ({
                                     <div className="flex items-center gap-3">
                                         <div className="size-12 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400 overflow-hidden shrink-0">
                                             {row.foto ? (
-                                                <img src={`https://educonect.alwaysdata.net/uploads/fotos/${row.foto}`} className="w-full h-full object-cover" alt="Perfil" />
+                                                <img src={assetUrl(row.foto.startsWith('/uploads') ? row.foto : `/uploads/fotos/${row.foto}`)} className="w-full h-full object-cover" alt="Perfil" />
                                             ) : (
                                                 row.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                                             )}

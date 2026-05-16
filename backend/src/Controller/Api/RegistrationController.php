@@ -49,6 +49,10 @@ class RegistrationController extends AbstractController
             $user->setEmail($email);
             $user->setPassword($passwordHasher->hashPassword($user, $data['password']));
             $user->setNombre($data['nombre'] ?? null);
+            
+            if (isset($data['firebaseUid'])) {
+                $user->setFirebaseUid($data['firebaseUid']);
+            }
 
             $role = $data['role'];
             switch ($role) {
