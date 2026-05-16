@@ -83,5 +83,13 @@ jobs:
           key: ${{ secrets.ALWAYSDATA_SSH_PRIVATE_KEY }}
           script: |
             cd /home/${{ secrets.ALWAYSDATA_SSH_USER }}/www
-            php bin/console doctrine:migrations:migrate --no-interaction
-            php bin/console cache:clear --env=prod
+            
+            # 1. Verificar si hay migraciones pendientes sin ejecutar de forma segura
+            php bin/console doctrine:migrations:status --no-interaction
+            
+            # 2. Ejecutar las migraciones pendientes dentro de una transacción segura
+            php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+            
+            # 3. Purgar y optimizar la caché de producción
+            php bin/console cache:clear --env=prod --no-warmup
+            php bin/console cache:warmup --env=prod
